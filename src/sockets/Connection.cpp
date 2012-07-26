@@ -13,8 +13,8 @@ Connection::Connection(boost::asio::io_service& io_service, Merger& merger, Rece
 }
 
 Connection::~Connection() {
+	std::cout << "Connection closed with " << socket_.remote_endpoint().address().to_string() << std::endl;
 	delete[] headerBuffer_;
-
 	socket_.close();
 	/*
 	 * Do NOT delete dataBuffer_ as this is still used in the merger. headerBuffer_ is
