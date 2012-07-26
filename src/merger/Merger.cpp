@@ -1,0 +1,90 @@
+/*
+ * Merger.cpp
+ *
+ *  Created on: Jul 6, 2012
+ *      Author: root
+ */
+
+#include <fstream>
+#include <iostream>
+
+#include "Merger.hpp"
+#include "ThreadsafeMap.hpp"
+
+namespace na62 {
+namespace merger {
+
+using namespace std;
+
+void Merger::addPacket(EVENT& event) {
+	std::cerr << "New Event received: " << event.hdr->eventNum << std::endl;
+	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
+}
+
+void Merger::handle_burstFinished(std::string address, uint32_t finishedBurstID) {
+	boost::lock_guard<boost::mutex> lock(newBurstMutex);
+
+	uint32_t lastBurstID = burstIDsByConnection_[address];
+	burstIDsByConnection_[address] = finishedBurstID;
+
+	std::map<std::string, uint32_t>::const_iterator itr;
+
+	bool allConnectionsDone = true;
+	for (itr = burstIDsByConnection_.begin(); itr != burstIDsByConnection_.end(); ++itr) {
+		if ((*itr).second != finishedBurstID) {
+			allConnectionsDone = false;
+			break;
+		}
+	}
+
+	std::cerr << "Finished burst: " << lastBurstID << std::endl;
+
+	if (allConnectionsDone) {
+		std::map<uint32_t, EVENT> lastBurst = eventsByIDByBurst[lastBurstID];
+		saveBurst(lastBurst, lastBurstID);
+		eventsByIDByBurst.erase(lastBurstID);
+	}
+}
+
+void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) {
+	print();
+	std::string fileName = generateFileName(burstID);
+	std::cerr << "Writing file " << fileName << std::endl;
+
+	ofstream myfile;
+	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
+
+	std::map<uint32_t, EVENT>::const_iterator itr;
+	int numberOfEvents = eventByID.size();
+	size_t bytes = 0;
+	for (itr = eventByID.begin(); itr != eventByID.end(); ++itr) {
+		myfile.write((char*) (*itr).second.hdr, sizeof(struct EVENT_HDR));
+		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4); // write
+		bytes += (*itr).second.hdr->length * 4;
+
+		delete[] (*itr).second.hdr;
+		delete[] (*itr).second.data;
+
+	}
+
+	myfile.close();
+
+	std::cerr << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
+}
+
+std::string Merger::generateFileName(uint32_t& burstID) {
+	time_t rawtime;
+	struct tm * timeinfo;
+	char buffer[64];
+	char timeString[24];
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+
+	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
+	sprintf(buffer, "%i-%s", burstID, timeString);
+	return std::string(buffer);
+}
+
+} /* namespace merger */
+} /* namespace na62 */
