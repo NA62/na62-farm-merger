@@ -27,6 +27,7 @@ int main(int argc, char* argv[]) {
 
 	try {
 		na62::merger::Receiver s(Options::LISTEN_IP, Options::LISTEN_PORT, boost::thread::hardware_concurrency());
+//		na62::merger::Receiver s(Options::LISTEN_IP, Options::LISTEN_PORT, 1);
 
 // Run the server until stopped.
 		s.run();

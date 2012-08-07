@@ -49,6 +49,7 @@ private:
 	std::map<std::string, uint32_t> burstIDsByConnection_;
 
 	boost::mutex newBurstMutex;
+	boost::mutex eventMutex;
 };
 
 } /* namespace merger */

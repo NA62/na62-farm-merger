@@ -14,6 +14,7 @@ namespace po = boost::program_options;
 /*
 * Configurable Variables
 */
+bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
 std::string Options::LISTEN_PORT;
 
@@ -42,6 +43,7 @@ void Options::Initialize(int argc, char* argv[]) {
 	po::options_description desc("Allowed options");
 	desc.add_options()
 	(OPTION_HELP, "Produce help message")
+	(OPTION_VERBOSE, "Verbose mode")
 	(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"),"Config file for these options")
 	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
 	(OPTION_LISTEN_PORT, po::value<std::string>()->required(), "IP tcp-port the merger should listen to");
@@ -62,6 +64,7 @@ void Options::Initialize(int argc, char* argv[]) {
 	std::cout << "=======Running with following configuration:" << std::endl;
 	PrintVM(vm);
 
+	VERBOSE = vm.count(OPTION_VERBOSE)>0;
 
 	/*
 	* Listening Devic/IP

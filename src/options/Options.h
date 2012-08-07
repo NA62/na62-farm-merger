@@ -34,6 +34,7 @@ namespace na62 {
  * Dynamic Options
  */
 #define OPTION_HELP (char*)"help"
+#define OPTION_VERBOSE (char*)"verbose"
 #define OPTION_CONFIG_FILE (char*)"configFile"
 
 #define OPTION_LISTEN_IP (char*)"listenIP"
@@ -45,9 +46,12 @@ public:
 	static void PrintVM(boost::program_options::variables_map vm);
 	static void Initialize(int argc, char* argv[]);
 
+
 	/*
 	 * Configurable Variables
 	 */
+	static bool VERBOSE;
+
 	static std::string LISTEN_IP;
 	static std::string LISTEN_PORT;
 

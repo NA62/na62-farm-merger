@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "../options/Options.h"
 #include "Merger.hpp"
 #include "ThreadsafeMap.hpp"
 
@@ -17,8 +18,9 @@ namespace merger {
 using namespace std;
 
 void Merger::addPacket(EVENT& event) {
-	std::cerr << "New Event received: " << event.hdr->eventNum << std::endl;
+//	boost::lock_guard<boost::mutex> lock(eventMutex);
 	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
+//	delete[] event.data;
 }
 
 void Merger::handle_burstFinished(std::string address, uint32_t finishedBurstID) {
@@ -47,7 +49,9 @@ void Merger::handle_burstFinished(std::string address, uint32_t finishedBurstID)
 }
 
 void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) {
-	print();
+	if(Options::VERBOSE){
+		print();
+	}
 	std::string fileName = generateFileName(burstID);
 	std::cerr << "Writing file " << fileName << std::endl;
 
@@ -59,7 +63,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	size_t bytes = 0;
 	for (itr = eventByID.begin(); itr != eventByID.end(); ++itr) {
 		myfile.write((char*) (*itr).second.hdr, sizeof(struct EVENT_HDR));
-		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4); // write
+		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4-sizeof(struct EVENT_HDR)); // write
 		bytes += (*itr).second.hdr->length * 4;
 
 		delete[] (*itr).second.hdr;

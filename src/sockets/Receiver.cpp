@@ -30,7 +30,7 @@ Receiver::Receiver(const std::string& address, const std::string& port, std::siz
 	start_accept();
 }
 
-Receiver::~Receiver(){
+Receiver::~Receiver() {
 	acceptor_.close();
 }
 
@@ -51,13 +51,11 @@ void Receiver::start_accept() {
 
 void Receiver::handle_accept(const boost::system::error_code& e) {
 	if (!e) {
-		std::string address = connection_->socket().remote_endpoint().address().to_string();
-
-		connection_->async_readHeader();
+		std::cout << "New client connected: " << connection_->socket().remote_endpoint().address().to_string() << std::endl;
+		boost::thread(boost::bind(&Connection::run, connection_));
 	} else {
 		std::cerr << "Error: " << e.message() << std::endl;
 	}
-
 	start_accept();
 }
 

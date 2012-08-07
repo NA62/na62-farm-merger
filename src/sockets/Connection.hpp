@@ -37,15 +37,9 @@ public:
 	/// Get the socket associated with the connection.
 	boost::asio::ip::tcp::socket& socket();
 
-	void async_readHeader();
-
+	void run();
 private:
-	/// Handle completion of a read operation.
-	void handle_readHeader(const boost::system::error_code& e, std::size_t bytes_transferred);
-	void handle_readData(const boost::system::error_code& e, std::size_t bytes_transferred);
-
-	/// Handle completion of a write operation.
-	void handle_write(const boost::system::error_code& e);
+	boost::asio::io_service& io_service_;
 
 	/// Strand to ensure the connection's handlers are not called concurrently.
 	boost::asio::io_service::strand strand_;
