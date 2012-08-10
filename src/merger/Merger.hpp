@@ -13,7 +13,6 @@
 #include <boost/thread.hpp>
 
 #include "../sockets/request.hpp"
-#include "ThreadsafeMap.hpp"
 
 namespace na62 {
 namespace merger {
@@ -34,10 +33,7 @@ public:
 		}
 	}
 
-	void handle_newBurst(std::string address, uint32_t newBurstID) {
-		burstIDsByConnection_[address] = newBurstID;
-		std::cerr << "New burst: " << newBurstID << std::endl;
-	}
+	void handle_newBurst(std::string address, uint32_t newBurstID);
 
 	void handle_burstFinished(std::string address, uint32_t finishedBurstID);
 

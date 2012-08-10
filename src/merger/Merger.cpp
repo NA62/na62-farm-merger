@@ -10,7 +10,6 @@
 
 #include "../options/Options.h"
 #include "Merger.hpp"
-#include "ThreadsafeMap.hpp"
 
 namespace na62 {
 namespace merger {
@@ -22,6 +21,11 @@ void Merger::addPacket(EVENT& event) {
 	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
 //	delete[] event.data;
 }
+
+void Merger::handle_newBurst(std::string address, uint32_t newBurstID) {
+		burstIDsByConnection_[address] = newBurstID;
+		std::cerr << "New burst: " << newBurstID << std::endl;
+	}
 
 void Merger::handle_burstFinished(std::string address, uint32_t finishedBurstID) {
 	boost::lock_guard<boost::mutex> lock(newBurstMutex);
@@ -55,11 +59,16 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	std::string fileName = generateFileName(burstID);
 	std::cerr << "Writing file " << fileName << std::endl;
 
+	int numberOfEvents = eventByID.size();
+	if(numberOfEvents==0){
+		std::cerr << "No event received for burst " << burstID << std::endl;
+		return;
+	}
 	ofstream myfile;
 	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
 
 	std::map<uint32_t, EVENT>::const_iterator itr;
-	int numberOfEvents = eventByID.size();
+
 	size_t bytes = 0;
 	for (itr = eventByID.begin(); itr != eventByID.end(); ++itr) {
 		myfile.write((char*) (*itr).second.hdr, sizeof(struct EVENT_HDR));
@@ -70,7 +79,6 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		delete[] (*itr).second.data;
 
 	}
-
 	myfile.close();
 
 	std::cerr << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
@@ -87,7 +95,7 @@ std::string Merger::generateFileName(uint32_t& burstID) {
 
 	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
 	sprintf(buffer, "%i-%s", burstID, timeString);
-	return std::string(buffer);
+	return Options::STORAGE_DIR+"/"+std::string(buffer);
 }
 
 } /* namespace merger */

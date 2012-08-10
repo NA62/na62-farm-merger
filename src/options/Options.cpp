@@ -17,6 +17,7 @@ namespace po = boost::program_options;
 bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
 std::string Options::LISTEN_PORT;
+std::string Options::STORAGE_DIR;
 
 
 void Options::PrintVM(po::variables_map vm) {
@@ -46,7 +47,8 @@ void Options::Initialize(int argc, char* argv[]) {
 	(OPTION_VERBOSE, "Verbose mode")
 	(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"),"Config file for these options")
 	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
-	(OPTION_LISTEN_PORT, po::value<std::string>()->required(), "IP tcp-port the merger should listen to");
+	(OPTION_LISTEN_PORT, po::value<std::string>()->required(), "IP tcp-port the merger should listen to")
+	(OPTION_STORAGE_DIR, po::value<std::string>()->required(), "Path to the directory where burst files should be written to");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -71,6 +73,11 @@ void Options::Initialize(int argc, char* argv[]) {
 	*/
 	LISTEN_IP = vm[OPTION_LISTEN_IP ].as<std::string>();
 	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<std::string>();;
+
+	/*
+	 * Storage
+	 */
+	STORAGE_DIR = vm[OPTION_STORAGE_DIR].as<std::string>();
 }
 
 } /* namespace na62 */

@@ -40,6 +40,7 @@ namespace na62 {
 #define OPTION_LISTEN_IP (char*)"listenIP"
 #define OPTION_LISTEN_PORT (char*)"listenPort"
 
+#define OPTION_STORAGE_DIR (char*)"storageDir"
 
 class Options {
 public:
@@ -54,6 +55,8 @@ public:
 
 	static std::string LISTEN_IP;
 	static std::string LISTEN_PORT;
+
+	static std::string STORAGE_DIR;
 
 };
 }
