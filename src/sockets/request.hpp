@@ -25,7 +25,7 @@ struct EVENT_HDR {
 	uint32_t eventNum :24;
 	uint8_t format; // Burst beginning: 0 ending: 1
 
-	uint32_t length;
+	uint32_t length; // number of 4B-words
 	uint32_t burstID;
 	uint32_t timestamp;
 

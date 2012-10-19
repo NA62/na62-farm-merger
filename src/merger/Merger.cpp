@@ -17,62 +17,65 @@ namespace merger {
 using namespace std;
 
 void Merger::addPacket(EVENT& event) {
-//	boost::lock_guard<boost::mutex> lock(eventMutex);
-	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
-//	delete[] event.data;
-}
-
-void Merger::handle_newBurst(std::string address, uint32_t newBurstID) {
-		burstIDsByConnection_[address] = newBurstID;
-		std::cerr << "New burst: " << newBurstID << std::endl;
-	}
-
-void Merger::handle_burstFinished(std::string address, uint32_t finishedBurstID) {
-	boost::lock_guard<boost::mutex> lock(newBurstMutex);
-
-	uint32_t lastBurstID = burstIDsByConnection_[address];
-	burstIDsByConnection_[address] = finishedBurstID;
-
-	std::map<std::string, uint32_t>::const_iterator itr;
-
-	bool allConnectionsDone = true;
-	for (itr = burstIDsByConnection_.begin(); itr != burstIDsByConnection_.end(); ++itr) {
-		if ((*itr).second != finishedBurstID) {
-			allConnectionsDone = false;
-			break;
+	boost::lock_guard<boost::mutex> lock(eventMutex);
+	if (eventsByIDByBurst[event.hdr->burstID].size() == 0) {
+		if (newBurstMutex.try_lock()) {
+			handle_newBurst(event.hdr->burstID);
+			newBurstMutex.unlock();
 		}
 	}
+	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
+}
 
-	std::cerr << "Finished burst: " << lastBurstID << std::endl;
+void Merger::handle_newBurst(uint32_t newBurstID) {
+	std::cerr << "New burst: " << newBurstID << std::endl;
+	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
+}
 
-	if (allConnectionsDone) {
-		std::map<uint32_t, EVENT> lastBurst = eventsByIDByBurst[lastBurstID];
-		saveBurst(lastBurst, lastBurstID);
-		eventsByIDByBurst.erase(lastBurstID);
-	}
+void Merger::startBurstControlThread(uint32_t& burstID) {
+	size_t lastEventNum = -1;
+	do{
+		lastEventNum = eventsByIDByBurst[burstID].size();
+		sleep(2);
+	} while (eventsByIDByBurst[burstID].size() > lastEventNum);
+	std::cout << "Finishing burst " << burstID << " : " << eventsByIDByBurst[burstID].size() << " because of normal timeout." << std::endl;
+	handle_burstFinished(burstID);
+}
+
+void Merger::handle_burstFinished(uint32_t finishedBurstID) {
+	boost::lock_guard<boost::mutex> lock(newBurstMutex);
+
+	std::map<uint32_t, EVENT> burst = eventsByIDByBurst[finishedBurstID];
+	saveBurst(burst, finishedBurstID);
+	eventsByIDByBurst.erase(finishedBurstID);
 }
 
 void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) {
-	if(Options::VERBOSE){
+	if (Options::VERBOSE) {
 		print();
 	}
 	std::string fileName = generateFileName(burstID);
 	std::cerr << "Writing file " << fileName << std::endl;
 
 	int numberOfEvents = eventByID.size();
-	if(numberOfEvents==0){
+	if (numberOfEvents == 0) {
 		std::cerr << "No event received for burst " << burstID << std::endl;
 		return;
 	}
 	ofstream myfile;
 	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
 
+	if(!myfile.good()){
+		std::cerr << "Unable to write to file " << fileName << std::endl;
+		// all carry on to free the memory. myfile.write will not throw!
+	}
+
 	std::map<uint32_t, EVENT>::const_iterator itr;
 
 	size_t bytes = 0;
 	for (itr = eventByID.begin(); itr != eventByID.end(); ++itr) {
 		myfile.write((char*) (*itr).second.hdr, sizeof(struct EVENT_HDR));
-		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4-sizeof(struct EVENT_HDR)); // write
+		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4 - sizeof(struct EVENT_HDR)); // write
 		bytes += (*itr).second.hdr->length * 4;
 
 		delete[] (*itr).second.hdr;
@@ -95,7 +98,7 @@ std::string Merger::generateFileName(uint32_t& burstID) {
 
 	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
 	sprintf(buffer, "%i-%s", burstID, timeString);
-	return Options::STORAGE_DIR+"/"+std::string(buffer);
+	return Options::STORAGE_DIR + "/" + std::string(buffer);
 }
 
 } /* namespace merger */

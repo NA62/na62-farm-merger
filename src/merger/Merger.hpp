@@ -33,16 +33,14 @@ public:
 		}
 	}
 
-	void handle_newBurst(std::string address, uint32_t newBurstID);
-
-	void handle_burstFinished(std::string address, uint32_t finishedBurstID);
-
 private:
+	void startBurstControlThread(uint32_t& burstID);
 	void saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID);
 	std::string generateFileName(uint32_t& burstID);
-	std::map<uint32_t, std::map<uint32_t, EVENT> > eventsByIDByBurst;
+	void handle_newBurst(uint32_t newBurstID);
+	void handle_burstFinished(uint32_t finishedBurstID);
 
-	std::map<std::string, uint32_t> burstIDsByConnection_;
+	std::map<uint32_t, std::map<uint32_t, EVENT> > eventsByIDByBurst;
 
 	boost::mutex newBurstMutex;
 	boost::mutex eventMutex;

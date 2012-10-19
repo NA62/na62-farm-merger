@@ -5,6 +5,7 @@
  *      Author: kunzejo
  */
 
+#include<boost/filesystem.hpp>
 #include "Options.h"
 
 namespace na62 {
@@ -12,13 +13,12 @@ namespace na62 {
 namespace po = boost::program_options;
 
 /*
-* Configurable Variables
-*/
+ * Configurable Variables
+ */
 bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
 std::string Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
-
 
 void Options::PrintVM(po::variables_map vm) {
 	using namespace po;
@@ -42,13 +42,11 @@ void Options::PrintVM(po::variables_map vm) {
  */
 void Options::Initialize(int argc, char* argv[]) {
 	po::options_description desc("Allowed options");
-	desc.add_options()
-	(OPTION_HELP, "Produce help message")
-	(OPTION_VERBOSE, "Verbose mode")
-	(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"),"Config file for these options")
-	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
-	(OPTION_LISTEN_PORT, po::value<std::string>()->required(), "IP tcp-port the merger should listen to")
-	(OPTION_STORAGE_DIR, po::value<std::string>()->required(), "Path to the directory where burst files should be written to");
+	desc.add_options()(OPTION_HELP, "Produce help message")(OPTION_VERBOSE, "Verbose mode")(OPTION_CONFIG_FILE,
+			po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")(OPTION_LISTEN_IP,
+			po::value<std::string>()->required(), "IP of the device the merger should listen to")(OPTION_LISTEN_PORT,
+			po::value<std::string>()->required(), "IP tcp-port the merger should listen to")(OPTION_STORAGE_DIR, po::value<std::string>()->required(),
+			"Path to the directory where burst files should be written to");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -66,18 +64,22 @@ void Options::Initialize(int argc, char* argv[]) {
 	std::cout << "=======Running with following configuration:" << std::endl;
 	PrintVM(vm);
 
-	VERBOSE = vm.count(OPTION_VERBOSE)>0;
+	VERBOSE = vm.count(OPTION_VERBOSE) > 0;
 
 	/*
-	* Listening Devic/IP
-	*/
+	 * Listening Devic/IP
+	 */
 	LISTEN_IP = vm[OPTION_LISTEN_IP ].as<std::string>();
-	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<std::string>();;
+	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<std::string>();
+	;
 
 	/*
 	 * Storage
 	 */
-	STORAGE_DIR = vm[OPTION_STORAGE_DIR].as<std::string>();
+	STORAGE_DIR = vm[OPTION_STORAGE_DIR ].as<std::string>();
+	if (!boost::filesystem::exists(STORAGE_DIR)) {
+		throw BadOption(OPTION_STORAGE_DIR, "Directory does not exist!");
+	}
 }
 
 } /* namespace na62 */

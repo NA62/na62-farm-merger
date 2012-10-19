@@ -36,7 +36,6 @@ void Connection::run() {
 				boost::asio::transfer_exactly(sizeof(struct EVENT_HDR)), error);
 
 		if (error == boost::asio::error::eof) {
-			merger_.handle_burstFinished(socket().remote_endpoint().address().to_string(), lastBurstID_);
 			break;
 		}
 
@@ -46,15 +45,6 @@ void Connection::run() {
 		//		std::cerr << "Header received: " << (int) bytes_transferred << "B " << (int) hdr->eventNum << " Events with " << (int) hdr->numberOfDetectors
 		//				<< " detectors " << std::endl;
 
-		if (hdr->length == 0 && hdr->timestamp == 0) { // Special header: new burst!
-			if (hdr->format == 0) {
-				merger_.handle_newBurst(socket().remote_endpoint().address().to_string(), hdr->burstID);
-			} else {
-				merger_.handle_burstFinished(socket().remote_endpoint().address().to_string(), hdr->burstID);
-			}
-			continue;
-		}
-
 		std::size_t expectedDataBytes = hdr->length * 4 - sizeof(struct EVENT_HDR);
 
 		dataBuffer_ = new char[expectedDataBytes];
@@ -62,7 +52,6 @@ void Connection::run() {
 		boost::asio::read(socket_, boost::asio::buffer(dataBuffer_, expectedDataBytes), boost::asio::transfer_exactly(expectedDataBytes));
 
 		if (error == boost::asio::error::eof) {
-			merger_.handle_burstFinished(socket().remote_endpoint().address().to_string(), lastBurstID_);
 			break;
 		}
 
