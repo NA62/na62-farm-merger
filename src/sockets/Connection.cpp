@@ -42,9 +42,6 @@ void Connection::run() {
 		EVENT_HDR* hdr = (EVENT_HDR*) headerBuffer_;
 		lastBurstID_ = hdr->burstID;
 
-		//		std::cerr << "Header received: " << (int) bytes_transferred << "B " << (int) hdr->eventNum << " Events with " << (int) hdr->numberOfDetectors
-		//				<< " detectors " << std::endl;
-
 		std::size_t expectedDataBytes = hdr->length * 4 - sizeof(struct EVENT_HDR);
 
 		dataBuffer_ = new char[expectedDataBytes];

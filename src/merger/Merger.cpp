@@ -28,7 +28,7 @@ void Merger::addPacket(EVENT& event) {
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {
-	std::cerr << "New burst: " << newBurstID << std::endl;
+	std::cout << "New burst: " << newBurstID << std::endl;
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
 }
 
@@ -55,7 +55,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		print();
 	}
 	std::string fileName = generateFileName(burstID);
-	std::cerr << "Writing file " << fileName << std::endl;
+	std::cout << "Writing file " << fileName << std::endl;
 
 	int numberOfEvents = eventByID.size();
 	if (numberOfEvents == 0) {
@@ -84,7 +84,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	}
 	myfile.close();
 
-	std::cerr << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
+	std::cout << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
 }
 
 std::string Merger::generateFileName(uint32_t& burstID) {

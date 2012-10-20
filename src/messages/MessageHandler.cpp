@@ -21,7 +21,7 @@ void MessageHandler::Write(const std::string& message) {
 void MessageHandler::Write(const std::string& message, const std::string& tableName) {
 	boost::lock_guard<boost::mutex> lock(echoMutex); // Will lock until return
 	if (lastMessageTimer.getRealTime() > 1) {
-		std::cerr << message << std::endl;
+		std::cout << message << std::endl;
 		lastMessageTimer.restart();
 	}
 
