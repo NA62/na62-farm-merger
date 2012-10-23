@@ -24,6 +24,7 @@
 #include "../utils/Utils.h"
 
 namespace na62 {
+namespace merger {
 /*
  * Compile time options
  */
@@ -42,11 +43,13 @@ namespace na62 {
 
 #define OPTION_STORAGE_DIR (char*)"storageDir"
 
+#define OPTION_DIM_UPDATE_TIME (char*)"dimUpdateTime"
+
+
 class Options {
 public:
 	static void PrintVM(boost::program_options::variables_map vm);
 	static void Initialize(int argc, char* argv[]);
-
 
 	/*
 	 * Configurable Variables
@@ -58,7 +61,9 @@ public:
 
 	static std::string STORAGE_DIR;
 
+	static int DIM_UPDATE_TIME;
+
 };
-}
-/* namespace na62 */
+} /* namespace merger */
+} /* namespace na62 */
 #endif /* OPTIONS_H_ */

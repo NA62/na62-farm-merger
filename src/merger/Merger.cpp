@@ -36,7 +36,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 	size_t lastEventNum = -1;
 	do{
 		lastEventNum = eventsByIDByBurst[burstID].size();
-		sleep(2);
+		sleep(8);
 	} while (eventsByIDByBurst[burstID].size() > lastEventNum);
 	std::cout << "Finishing burst " << burstID << " : " << eventsByIDByBurst[burstID].size() << " because of normal timeout." << std::endl;
 	handle_burstFinished(burstID);

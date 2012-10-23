@@ -16,7 +16,7 @@ namespace merger {
 // The top-level class of the merger
 class Receiver: private boost::noncopyable {
 public:
-	explicit Receiver(const std::string& address, const std::string& port, std::size_t thread_pool_size);
+	explicit Receiver(Merger& merger, const std::string& address, const std::string& port, std::size_t thread_pool_size);
 	virtual ~Receiver();
 	// Start the server's io_service with a pool of threads.
 	void run();
@@ -47,7 +47,7 @@ private:
 	connection_ptr connection_;
 
 	// The handler for all incoming requests.
-	Merger merger_;
+	Merger& merger_;
 };
 
 } // namespace merger

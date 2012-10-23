@@ -9,6 +9,7 @@
 #include "Options.h"
 
 namespace na62 {
+namespace merger {
 
 namespace po = boost::program_options;
 
@@ -19,6 +20,7 @@ bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
 std::string Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
+int Options::DIM_UPDATE_TIME;
 
 void Options::PrintVM(po::variables_map vm) {
 	using namespace po;
@@ -46,7 +48,8 @@ void Options::Initialize(int argc, char* argv[]) {
 			po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")(OPTION_LISTEN_IP,
 			po::value<std::string>()->required(), "IP of the device the merger should listen to")(OPTION_LISTEN_PORT,
 			po::value<std::string>()->required(), "IP tcp-port the merger should listen to")(OPTION_STORAGE_DIR, po::value<std::string>()->required(),
-			"Path to the directory where burst files should be written to");
+			"Path to the directory where burst files should be written to")
+			(OPTION_DIM_UPDATE_TIME, po::value<int>()->required(), "Milliseconds to sleep between two monitor updates.");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -80,6 +83,8 @@ void Options::Initialize(int argc, char* argv[]) {
 	if (!boost::filesystem::exists(STORAGE_DIR)) {
 		throw BadOption(OPTION_STORAGE_DIR, "Directory does not exist!");
 	}
-}
 
+	DIM_UPDATE_TIME = vm[OPTION_DIM_UPDATE_TIME].as<int>();
+}
+} /* namespace merger */
 } /* namespace na62 */

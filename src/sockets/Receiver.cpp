@@ -7,8 +7,8 @@
 namespace na62 {
 namespace merger {
 
-Receiver::Receiver(const std::string& address, const std::string& port, std::size_t thread_pool_size) :
-		thread_pool_size_(thread_pool_size), signals_(io_service_), acceptor_(io_service_), connection_(), merger_() {
+Receiver::Receiver(Merger& merger, const std::string& address, const std::string& port, std::size_t thread_pool_size) :
+		thread_pool_size_(thread_pool_size), signals_(io_service_), acceptor_(io_service_), connection_(), merger_(merger) {
 	// Register to handle the signals that indicate when the server should exit.
 	// It is safe to register for the same signal multiple times in a program,
 	// provided all registration for the specified signal is made through Asio.
