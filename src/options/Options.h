@@ -48,6 +48,7 @@ namespace merger {
 
 #define OPTION_RUN_NUMBER (char*)"currentRunNumber"
 
+#define OPTION_TIMEOUT (char*)"burstTimeout"
 
 class Options {
 public:
@@ -69,6 +70,8 @@ public:
 	static int MERGER_ID;
 
 	static int RUN_NUMBER;
+
+	static int TIMEOUT;
 
 };
 } /* namespace merger */

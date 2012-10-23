@@ -23,6 +23,7 @@ std::string Options::STORAGE_DIR;
 int Options::MONITOR_UPDATE_TIME;
 int Options::MERGER_ID;
 int Options::RUN_NUMBER;
+int Options::TIMEOUT;
 
 void Options::PrintVM(po::variables_map vm) {
 	using namespace po;
@@ -52,8 +53,9 @@ void Options::Initialize(int argc, char* argv[]) {
 			po::value<std::string>()->required(), "IP tcp-port the merger should listen to")(OPTION_STORAGE_DIR, po::value<std::string>()->required(),
 			"Path to the directory where burst files should be written to")(OPTION_DIM_UPDATE_TIME, po::value<int>()->required(),
 			"Milliseconds to sleep between two monitor updates.")(OPTION_MERGER_ID, po::value<int>()->required(),
-			"Identifier of this merger. This will be the first number of the created files.")
-			(OPTION_RUN_NUMBER, po::value<int>()->required(), "Current run number (will be updated via dim)");
+			"Identifier of this merger. This will be the first number of the created files.")(OPTION_RUN_NUMBER, po::value<int>()->required(),
+			"Current run number (will be updated via dim)")(OPTION_TIMEOUT, po::value<int>()->required(),
+			"If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -92,7 +94,9 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	MERGER_ID = vm[OPTION_MERGER_ID ].as<int>();
 
-	RUN_NUMBER = vm[OPTION_RUN_NUMBER].as<int>();
+	RUN_NUMBER = vm[OPTION_RUN_NUMBER ].as<int>();
+
+	TIMEOUT = vm[OPTION_TIMEOUT ].as<int>();
 }
 } /* namespace merger */
 } /* namespace na62 */

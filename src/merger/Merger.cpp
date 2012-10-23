@@ -9,6 +9,8 @@
 #include <iostream>
 
 #include "../options/Options.h"
+#include<boost/filesystem.hpp>
+
 #include "Merger.hpp"
 
 namespace na62 {
@@ -41,7 +43,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 	size_t lastEventNum = -1;
 	do {
 		lastEventNum = eventsByIDByBurst[burstID].size();
-		sleep(8);
+		sleep(Options::TIMEOUT);
 	} while (eventsByIDByBurst[burstID].size() > lastEventNum);
 	std::cout << "Finishing burst " << burstID << " : " << eventsByIDByBurst[burstID].size() << " because of normal timeout." << std::endl;
 	handle_burstFinished(burstID);
@@ -70,6 +72,21 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		std::cerr << "No event received for burst " << burstID << std::endl;
 		return;
 	}
+
+	if (boost::filesystem::exists(fileName)) {
+		std::cerr << "File already exists: " << fileName << std::endl;
+		int counter = 2;
+		std::string tmpName;
+		tmpName = fileName + "." + boost::lexical_cast<std::string>(counter);
+		while (boost::filesystem::exists(tmpName)) {
+			std::cerr << "File already exists: " << tmpName << std::endl;
+			tmpName = fileName + "." + boost::lexical_cast<std::string>(++counter);
+		}
+
+		std::cerr << "Instead writing file: " << tmpName << std::endl;
+		fileName = tmpName;
+	}
+
 	ofstream myfile;
 	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
 
@@ -103,7 +120,7 @@ std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID) {
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 
-	sprintf(buffer, "cdr(%2d)(%6d)-(%4d).dat", Options::MERGER_ID, runNumber, burstID);
+	sprintf(buffer, "cdr%02d%06d-%04d.dat", Options::MERGER_ID, runNumber, burstID);
 	return Options::STORAGE_DIR + "/" + std::string(buffer);
 }
 
