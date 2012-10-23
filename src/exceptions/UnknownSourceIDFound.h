@@ -14,15 +14,16 @@
 #include "NA62Error.h"
 
 namespace na62 {
-
-class UnknownSourceIDFound: public na62::NA62Error {
+namespace merger {
+class UnknownSourceIDFound: public NA62Error {
 public:
 	UnknownSourceIDFound(uint8_t sourceID) :
-			na62::NA62Error(
+			NA62Error(
 					"Unknown source ID: " + boost::lexical_cast<std::string>((int) sourceID)
 							+ "\n Check the corresponding field in the Options file!") {
 	}
 };
 
+} //namespace merger
 } //namespace na62
 #endif /* UNDNOWNSOURCEIDFOUND_H_ */

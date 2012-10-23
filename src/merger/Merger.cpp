@@ -15,6 +15,9 @@ namespace na62 {
 namespace merger {
 
 using namespace std;
+Merger::Merger() :
+		currentRunNumber_(Options::RUN_NUMBER) {
+}
 
 void Merger::addPacket(EVENT& event) {
 	boost::lock_guard<boost::mutex> lock(eventMutex);
@@ -25,16 +28,18 @@ void Merger::addPacket(EVENT& event) {
 		}
 	}
 	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
+
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {
 	std::cout << "New burst: " << newBurstID << std::endl;
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
+	runNumberByBurst[newBurstID] = currentRunNumber_;
 }
 
 void Merger::startBurstControlThread(uint32_t& burstID) {
 	size_t lastEventNum = -1;
-	do{
+	do {
 		lastEventNum = eventsByIDByBurst[burstID].size();
 		sleep(8);
 	} while (eventsByIDByBurst[burstID].size() > lastEventNum);
@@ -54,7 +59,10 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	if (Options::VERBOSE) {
 		print();
 	}
-	std::string fileName = generateFileName(burstID);
+	uint32_t runNumber = runNumberByBurst[burstID];
+	runNumberByBurst.erase(burstID);
+
+	std::string fileName = generateFileName(runNumber, burstID);
 	std::cout << "Writing file " << fileName << std::endl;
 
 	int numberOfEvents = eventByID.size();
@@ -65,7 +73,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	ofstream myfile;
 	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
 
-	if(!myfile.good()){
+	if (!myfile.good()) {
 		std::cerr << "Unable to write to file " << fileName << std::endl;
 		// all carry on to free the memory. myfile.write will not throw!
 	}
@@ -87,17 +95,15 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	std::cout << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
 }
 
-std::string Merger::generateFileName(uint32_t& burstID) {
+std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID) {
 	time_t rawtime;
 	struct tm * timeinfo;
 	char buffer[64];
-	char timeString[24];
 
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 
-	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
-	sprintf(buffer, "%i-%s", burstID, timeString);
+	sprintf(buffer, "cdr(%2d)(%6d)-(%4d).dat", Options::MERGER_ID, runNumber, burstID);
 	return Options::STORAGE_DIR + "/" + std::string(buffer);
 }
 

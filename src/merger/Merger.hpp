@@ -20,6 +20,7 @@ namespace merger {
 //class ThreadsafeMap;
 class Merger {
 public:
+	Merger();
 	void addPacket(EVENT& event);
 
 	void print() {
@@ -33,14 +34,29 @@ public:
 		}
 	}
 
+	std::string getProgressStats() {
+		std::stringstream stream;
+		std::map<uint32_t, std::map<uint32_t, EVENT> >::const_iterator itr;
+		for (itr = eventsByIDByBurst.begin(); itr != eventsByIDByBurst.end(); ++itr) {
+			stream << (*itr).first << ";" << (*itr).second.size() << ";";
+		}
+		return stream.str();
+	}
+
+	void updateRunNumber(uint32_t newRunNumber) {
+		currentRunNumber_ = newRunNumber;
+	}
+
 private:
 	void startBurstControlThread(uint32_t& burstID);
 	void saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID);
-	std::string generateFileName(uint32_t& burstID);
+	std::string generateFileName(uint32_t runNumber, uint32_t burstID);
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
 
 	std::map<uint32_t, std::map<uint32_t, EVENT> > eventsByIDByBurst;
+	std::map<uint32_t, uint32_t> runNumberByBurst;
+	uint32_t currentRunNumber_;
 
 	boost::mutex newBurstMutex;
 	boost::mutex eventMutex;

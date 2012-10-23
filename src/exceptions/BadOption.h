@@ -10,13 +10,13 @@
 #include "NA62Error.h"
 
 namespace na62 {
-
-class BadOption: public na62::NA62Error {
+namespace merger {
+class BadOption: public NA62Error {
 public:
 	BadOption(std::string option, std::string value) :
-			na62::NA62Error("Bad option '"+option+"': "+value+"\n\n Try --help") {
+			NA62Error("Bad option '"+option+"': "+value+"\n\n Try --help") {
 	}
 };
-
+} //namespace merger
 } //namespace na62
 #endif /* BADOPTION_H_ */

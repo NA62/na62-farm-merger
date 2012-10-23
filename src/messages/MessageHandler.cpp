@@ -1,46 +1,36 @@
 /*
  * MessageHandler.cpp
  *
- *  Created on: Nov 14, 2011
- *      Author: kunzejo
+ *  Created on: Oct 22, 2012
+ *      Author: root
  */
 
-#include "../options/Options.h"
 #include "MessageHandler.h"
+#include "../options/Options.h"
+#include <streambuf>
 
 namespace na62 {
+namespace merger {
 
-Stopwatch MessageHandler::lastMessageTimer;
-boost::mutex MessageHandler::echoMutex;
-//SQLConnector* MessageHandler::sqlConnector = NULL;
-
-void MessageHandler::Write(const std::string& message) {
-	Write(message, "Message");
-}
-
-void MessageHandler::Write(const std::string& message, const std::string& tableName) {
-	boost::lock_guard<boost::mutex> lock(echoMutex); // Will lock until return
-	if (lastMessageTimer.getRealTime() > 1) {
-		std::cout << message << std::endl;
-		lastMessageTimer.restart();
+int MessageHandler::overflow(int c) {
+	if (Options::VERBOSE == 0 || (!ignoreVerbose_ && Options::VERBOSE == 1)) {
+		return EOF;
 	}
 
-//	if (Options::Instance() != NULL) {
-//		/*
-//		 * Search for ' and replace it by \'
-//		 */
-//		size_t pos = 0;
-//		std::string sqlSafe(message);
-//		while ((pos = sqlSafe.find("'", pos)) != std::string::npos) {
-//			sqlSafe.replace(pos, 2, (char*) "\'");
-//			pos += 2;
-//		}
-//
-//		if (sqlConnector == NULL) {
-//			sqlConnector = new SQLConnector();
-//		}
-//		sqlConnector->query("INSERT INTO  `na62-monitoring`.`" + tableName + "` (`Text`)	VALUES ( '" + sqlSafe + "')");
-//	}
+	if (c != EOF) {
+		// and write the character to the standard output
+		if (putc(c, stream_) == EOF) {
+			return EOF;
+		}
+	}
+	return c;
 }
 
+MessageHandler mH(stdout);
+MessageHandler eH(stderr, true);
+// initialize output streams with the output buffers
+std::ostream mycout(&mH);
+std::ostream mycerr(&eH);
+
+} /* namespace merger */
 } /* namespace na62 */

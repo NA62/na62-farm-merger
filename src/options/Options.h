@@ -20,7 +20,6 @@
 
 #include "../exceptions/BadOption.h"
 #include "../exceptions/UnknownSourceIDFound.h"
-#include "../messages/WarningHandler.h"
 #include "../utils/Utils.h"
 
 namespace na62 {
@@ -45,6 +44,10 @@ namespace merger {
 
 #define OPTION_DIM_UPDATE_TIME (char*)"dimUpdateTime"
 
+#define OPTION_MERGER_ID (char*)"mergerID"
+
+#define OPTION_RUN_NUMBER (char*)"currentRunNumber"
+
 
 class Options {
 public:
@@ -61,7 +64,11 @@ public:
 
 	static std::string STORAGE_DIR;
 
-	static int DIM_UPDATE_TIME;
+	static int MONITOR_UPDATE_TIME;
+
+	static int MERGER_ID;
+
+	static int RUN_NUMBER;
 
 };
 } /* namespace merger */

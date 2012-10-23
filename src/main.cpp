@@ -16,18 +16,12 @@
 #include "utils/Utils.h"
 #include "sockets/request.hpp"
 
-#include "MonitorDimServer.h"
+#include "dim/MonitorConnector.h"
+#include "dim/CommandConnector.h"
 
 using namespace na62::merger;
 
 int main(int argc, char* argv[]) {
-	char hostName[1024];
-	hostName[1023] = '\0';
-	if (gethostname(hostName, 1023)) {
-		std::cerr << "Unable to get host name! Refusing to start.";
-		exit(1);
-	}
-
 	/*
 	 * Read program parameters
 	 */
@@ -35,7 +29,10 @@ int main(int argc, char* argv[]) {
 	Options::Initialize(argc, argv);
 
 	Merger merger;
-	MonitorDimServer(merger, std::string(hostName));
+	MonitorConnector monitor(merger);
+
+	CommandConnector commands(merger);
+	commands.startThread();
 
 	try {
 		na62::merger::Receiver receiver(merger, Options::LISTEN_IP, Options::LISTEN_PORT, boost::thread::hardware_concurrency());
