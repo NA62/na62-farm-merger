@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# start the merger. should be done by the dim interface
+#/workspace/na62-merger/Debug/na62-merger --currentRunNumber=0
+
+#start the dim interface
+DIM_DNS_NODE=lkrpn2 /workspace/na62-farm-dim-interface/Debug/na62-farm-dim-interface &
+
