@@ -78,15 +78,17 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		std::cerr << "File already exists: " << filePath << std::endl;
 		int counter = 2;
 		std::string tmpName;
-		tmpName = filePath + "." + boost::lexical_cast<std::string>(counter);
-		while (boost::filesystem::exists(tmpName)) {
+		tmpName = fileName + "." + boost::lexical_cast<std::string>(counter);
+		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" +tmpName)) {
 			std::cerr << "File already exists: " << tmpName << std::endl;
-			tmpName = filePath + "." + boost::lexical_cast<std::string>(++counter);
+			tmpName = fileName + "." + boost::lexical_cast<std::string>(++counter);
 		}
 
 		std::cerr << "Instead writing file: " << tmpName << std::endl;
-		filePath = tmpName;
+		fileName = tmpName;
+		filePath = Options::STORAGE_DIR + "/" + fileName;
 	}
+
 
 	ofstream myfile;
 	myfile.open(filePath.data(), ios::out | ios::trunc | ios::binary);
@@ -129,8 +131,6 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 
 		std::ofstream BKMFile;
 		BKMFile.open(BKMFilePath.data(), ios::out | ios::trunc);
-
-		dataFilePath = BKMFilePath;
 
 		if (!BKMFile.good()) {
 			std::cerr << "Unable to write to file " << BKMFilePath << std::endl;
