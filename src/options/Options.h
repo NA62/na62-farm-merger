@@ -41,6 +41,7 @@ namespace merger {
 #define OPTION_LISTEN_PORT (char*)"listenPort"
 
 #define OPTION_STORAGE_DIR (char*)"storageDir"
+#define OPTION_BKM_DIR (char*)"bkmDir"
 
 #define OPTION_DIM_UPDATE_TIME (char*)"dimUpdateTime"
 
@@ -64,6 +65,7 @@ public:
 	static std::string LISTEN_PORT;
 
 	static std::string STORAGE_DIR;
+	static std::string BKM_DIR;
 
 	static int MONITOR_UPDATE_TIME;
 

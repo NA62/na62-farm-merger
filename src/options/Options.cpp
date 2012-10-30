@@ -20,6 +20,7 @@ bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
 std::string Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
+std::string Options::BKM_DIR;
 int Options::MONITOR_UPDATE_TIME;
 int Options::MERGER_ID;
 int Options::RUN_NUMBER;
@@ -51,8 +52,9 @@ void Options::Initialize(int argc, char* argv[]) {
 			po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")(OPTION_LISTEN_IP,
 			po::value<std::string>()->required(), "IP of the device the merger should listen to")(OPTION_LISTEN_PORT,
 			po::value<std::string>()->required(), "IP tcp-port the merger should listen to")(OPTION_STORAGE_DIR, po::value<std::string>()->required(),
-			"Path to the directory where burst files should be written to")(OPTION_DIM_UPDATE_TIME, po::value<int>()->required(),
-			"Milliseconds to sleep between two monitor updates.")(OPTION_MERGER_ID, po::value<int>()->required(),
+			"Path to the directory where burst files should be written to.")(OPTION_BKM_DIR, po::value<std::string>()->required(),
+			"Path to the directory where the bkm files with the path to the original burst file and some statistics should be written after finishing each burst.")(OPTION_DIM_UPDATE_TIME,
+			po::value<int>()->required(), "Milliseconds to sleep between two monitor updates.")(OPTION_MERGER_ID, po::value<int>()->required(),
 			"Identifier of this merger. This will be the first number of the created files.")(OPTION_RUN_NUMBER, po::value<int>()->required(),
 			"Current run number (will be updated via dim)")(OPTION_TIMEOUT, po::value<int>()->required(),
 			"If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.");
@@ -88,6 +90,11 @@ void Options::Initialize(int argc, char* argv[]) {
 	STORAGE_DIR = vm[OPTION_STORAGE_DIR ].as<std::string>();
 	if (!boost::filesystem::exists(STORAGE_DIR)) {
 		throw BadOption(OPTION_STORAGE_DIR, "Directory does not exist!");
+	}
+
+	BKM_DIR = vm[OPTION_BKM_DIR ].as<std::string>();
+	if (!boost::filesystem::exists(BKM_DIR)) {
+		throw BadOption(OPTION_BKM_DIR, "Directory does not exist!");
 	}
 
 	MONITOR_UPDATE_TIME = vm[OPTION_DIM_UPDATE_TIME ].as<int>();

@@ -65,7 +65,8 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	runNumberByBurst.erase(burstID);
 
 	std::string fileName = generateFileName(runNumber, burstID);
-	std::cout << "Writing file " << fileName << std::endl;
+	std::string filePath = Options::STORAGE_DIR + "/" + fileName;
+	std::cout << "Writing file " << filePath << std::endl;
 
 	int numberOfEvents = eventByID.size();
 	if (numberOfEvents == 0) {
@@ -73,26 +74,26 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		return;
 	}
 
-	if (boost::filesystem::exists(fileName)) {
-		std::cerr << "File already exists: " << fileName << std::endl;
+	if (boost::filesystem::exists(filePath)) {
+		std::cerr << "File already exists: " << filePath << std::endl;
 		int counter = 2;
 		std::string tmpName;
-		tmpName = fileName + "." + boost::lexical_cast<std::string>(counter);
+		tmpName = filePath + "." + boost::lexical_cast<std::string>(counter);
 		while (boost::filesystem::exists(tmpName)) {
 			std::cerr << "File already exists: " << tmpName << std::endl;
-			tmpName = fileName + "." + boost::lexical_cast<std::string>(++counter);
+			tmpName = filePath + "." + boost::lexical_cast<std::string>(++counter);
 		}
 
 		std::cerr << "Instead writing file: " << tmpName << std::endl;
-		fileName = tmpName;
+		filePath = tmpName;
 	}
 
 	ofstream myfile;
-	myfile.open(fileName.data(), ios::out | ios::trunc | ios::binary);
+	myfile.open(filePath.data(), ios::out | ios::trunc | ios::binary);
 
 	if (!myfile.good()) {
-		std::cerr << "Unable to write to file " << fileName << std::endl;
-		// all carry on to free the memory. myfile.write will not throw!
+		std::cerr << "Unable to write to file " << filePath << std::endl;
+		// carry on to free the memory. myfile.write will not throw!
 	}
 
 	std::map<uint32_t, EVENT>::const_iterator itr;
@@ -109,19 +110,54 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	}
 	myfile.close();
 
+	writeBKMFile(filePath, fileName, bytes);
+
 	std::cout << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << bytes << " bytes" << std::endl;
 }
 
+void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength) {
+		time_t rawtime;
+		struct tm * timeinfo;
+		char timeString[24];
+
+		time(&rawtime);
+		timeinfo = localtime(&rawtime);
+
+		strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
+
+		std::string BKMFilePath = Options::BKM_DIR+"/" +fileName;
+
+		std::ofstream BKMFile;
+		BKMFile.open(BKMFilePath.data(), ios::out | ios::trunc);
+
+		dataFilePath = BKMFilePath;
+
+		if (!BKMFile.good()) {
+			std::cerr << "Unable to write to file " << BKMFilePath << std::endl;
+			return;
+		}
+
+		BKMFile.write(dataFilePath.data(), dataFilePath.length());
+		BKMFile.write("\n", 1);
+
+		std::string sizeLine = "size: "
+				+ boost::lexical_cast<std::string>(fileLength);
+		BKMFile.write(sizeLine.data(), sizeLine.length());
+		BKMFile.write("\n", 1);
+
+		std::string dateLine = "datetime: " + std::string(timeString);
+		BKMFile.write(dateLine.data(), dateLine.length());
+		BKMFile.write("\n", 1);
+
+		BKMFile.close();
+		std::cout << "Wrote BKM file " << BKMFilePath << std::endl;
+}
+
 std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID) {
-	time_t rawtime;
-	struct tm * timeinfo;
 	char buffer[64];
 
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-
 	sprintf(buffer, "cdr%02d%06d-%04d.dat", Options::MERGER_ID, runNumber, burstID);
-	return Options::STORAGE_DIR + "/" + std::string(buffer);
+	return std::string(buffer);
 }
 
 } /* namespace merger */
