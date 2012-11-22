@@ -18,18 +18,25 @@ namespace merger {
 
 using namespace std;
 Merger::Merger() :
-		currentRunNumber_(Options::RUN_NUMBER) {
+		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
 }
 
 void Merger::addPacket(EVENT& event) {
+	uint32_t burstID = event.hdr->burstID;
 	boost::lock_guard<boost::mutex> lock(eventMutex);
-	if (eventsByIDByBurst[event.hdr->burstID].size() == 0) {
+	if (eventsByIDByBurst[burstID].size() == 0) {
+		/*
+		 * Only one thread will start the EOB checking thread
+		 */
 		if (newBurstMutex.try_lock()) {
-			handle_newBurst(event.hdr->burstID);
+			handle_newBurst(burstID);
 			newBurstMutex.unlock();
 		}
+
+		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
-	eventsByIDByBurst[event.hdr->burstID][event.hdr->eventNum] = event;
+	event.hdr->SOBtimestamp = SOBtimestampByBurst[burstID];
+	eventsByIDByBurst[burstID][event.hdr->eventNum] = event;
 
 }
 
@@ -58,9 +65,6 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 }
 
 void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) {
-	if (Options::VERBOSE) {
-		print();
-	}
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
@@ -79,7 +83,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		int counter = 2;
 		std::string tmpName;
 		tmpName = fileName + "." + boost::lexical_cast<std::string>(counter);
-		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" +tmpName)) {
+		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" + tmpName)) {
 			std::cerr << "File already exists: " << tmpName << std::endl;
 			tmpName = fileName + "." + boost::lexical_cast<std::string>(++counter);
 		}
@@ -88,7 +92,6 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		fileName = tmpName;
 		filePath = Options::STORAGE_DIR + "/" + fileName;
 	}
-
 
 	ofstream myfile;
 	myfile.open(filePath.data(), ios::out | ios::trunc | ios::binary);
@@ -108,7 +111,6 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 
 		delete[] (*itr).second.hdr;
 		delete[] (*itr).second.data;
-
 	}
 	myfile.close();
 
@@ -118,39 +120,38 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 }
 
 void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength) {
-		time_t rawtime;
-		struct tm * timeinfo;
-		char timeString[24];
+	time_t rawtime;
+	struct tm * timeinfo;
+	char timeString[24];
 
-		time(&rawtime);
-		timeinfo = localtime(&rawtime);
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
 
-		strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
+	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
 
-		std::string BKMFilePath = Options::BKM_DIR+"/" +fileName;
+	std::string BKMFilePath = Options::BKM_DIR + "/" + fileName;
 
-		std::ofstream BKMFile;
-		BKMFile.open(BKMFilePath.data(), ios::out | ios::trunc);
+	std::ofstream BKMFile;
+	BKMFile.open(BKMFilePath.data(), ios::out | ios::trunc);
 
-		if (!BKMFile.good()) {
-			std::cerr << "Unable to write to file " << BKMFilePath << std::endl;
-			return;
-		}
+	if (!BKMFile.good()) {
+		std::cerr << "Unable to write to file " << BKMFilePath << std::endl;
+		return;
+	}
 
-		BKMFile.write(dataFilePath.data(), dataFilePath.length());
-		BKMFile.write("\n", 1);
+	BKMFile.write(dataFilePath.data(), dataFilePath.length());
+	BKMFile.write("\n", 1);
 
-		std::string sizeLine = "size: "
-				+ boost::lexical_cast<std::string>(fileLength);
-		BKMFile.write(sizeLine.data(), sizeLine.length());
-		BKMFile.write("\n", 1);
+	std::string sizeLine = "size: " + boost::lexical_cast<std::string>(fileLength);
+	BKMFile.write(sizeLine.data(), sizeLine.length());
+	BKMFile.write("\n", 1);
 
-		std::string dateLine = "datetime: " + std::string(timeString);
-		BKMFile.write(dateLine.data(), dateLine.length());
-		BKMFile.write("\n", 1);
+	std::string dateLine = "datetime: " + std::string(timeString);
+	BKMFile.write(dateLine.data(), dateLine.length());
+	BKMFile.write("\n", 1);
 
-		BKMFile.close();
-		std::cout << "Wrote BKM file " << BKMFilePath << std::endl;
+	BKMFile.close();
+	std::cout << "Wrote BKM file " << BKMFilePath << std::endl;
 }
 
 std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID) {

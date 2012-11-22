@@ -47,6 +47,11 @@ public:
 		currentRunNumber_ = newRunNumber;
 	}
 
+	void SetSOBtimestamp_(uint32_t SOBtimestamp) {
+		nextBurstSOBtimestamp_ = SOBtimestamp;
+	}
+
+
 private:
 	void startBurstControlThread(uint32_t& burstID);
 	void saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID);
@@ -57,7 +62,9 @@ private:
 
 	std::map<uint32_t, std::map<uint32_t, EVENT> > eventsByIDByBurst;
 	std::map<uint32_t, uint32_t> runNumberByBurst;
+	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;
+	uint32_t nextBurstSOBtimestamp_;
 
 	boost::mutex newBurstMutex;
 	boost::mutex eventMutex;

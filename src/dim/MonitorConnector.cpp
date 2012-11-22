@@ -92,7 +92,7 @@ void MonitorConnector::handleUpdate() {
 	}
 
 	sendStatistics("BurstProgress", merger_.getProgressStats());
-	sendStatistics("BurstProgress", "2;3;");
+//	sendStatistics("BurstProgress", "2;3;");
 }
 
 void MonitorConnector::sendStatistics(std::string name, std::string values) {

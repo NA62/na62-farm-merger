@@ -38,7 +38,7 @@ struct EVENT_HDR {
 
 	uint32_t processingID;
 
-	uint32_t reserved3;
+	uint32_t SOBtimestamp;
 }__attribute__ ((__packed__));
 
 
