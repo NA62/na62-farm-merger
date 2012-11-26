@@ -23,9 +23,6 @@ CommandConnector::CommandConnector(Merger& merger) :
 				, 100 // max message number
 				, 1024 * 64 //max message size
 						));
-
-		unsigned int priority;
-		message_queue::size_type recvd_size;
 	} catch (interprocess_exception &ex) {
 		message_queue::remove("command");
 		mycerr << "Unable to create command message queue: " << ex.what() << std::endl;
