@@ -50,9 +50,9 @@ void CommandConnector::thread() {
 		 */
 		commandQueue_->receive(&(message[0]), message.size(), recvd_size, priority);
 		message.resize(recvd_size);
-		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
 		std::cout << "Received command: " << message << std::endl;
+		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
 		std::vector<std::string> strings;
 		boost::split(strings, message, boost::is_any_of(":"));
