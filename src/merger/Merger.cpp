@@ -68,7 +68,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
-	std::string fileName = generateFileName(runNumber, burstID);
+	std::string fileName = generateFileName(runNumber, burstID, 0);
 	std::string filePath = Options::STORAGE_DIR + "/" + fileName;
 	std::cout << "Writing file " << filePath << std::endl;
 
@@ -82,7 +82,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		std::cerr << "File already exists: " << filePath << std::endl;
 		int counter = 2;
 		std::string tmpName;
-		tmpName = fileName + "." + boost::lexical_cast<std::string>(counter);
+		tmpName = generateFileName(runNumber, burstID, counter);
 		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" + tmpName)) {
 			std::cerr << "File already exists: " << tmpName << std::endl;
 			tmpName = fileName + "." + boost::lexical_cast<std::string>(++counter);
@@ -154,10 +154,14 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 	std::cout << "Wrote BKM file " << BKMFilePath << std::endl;
 }
 
-std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID) {
+std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
 	char buffer[64];
 
-	sprintf(buffer, "cdr%02d%06d-%04d.dat", Options::MERGER_ID, runNumber, burstID);
+	if (duplicate == 0) {
+		sprintf(buffer, "cdr%02d%06d-%04d.dat", Options::MERGER_ID, runNumber, burstID);
+	} else {
+		sprintf(buffer, "cdr%02d%06d-%04d_%d.dat", Options::MERGER_ID, runNumber, burstID, duplicate);
+	}
 	return std::string(buffer);
 }
 

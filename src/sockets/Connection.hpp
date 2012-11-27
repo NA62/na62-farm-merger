@@ -20,8 +20,6 @@
 
 #include "../merger/Merger.hpp"
 
-#include "request.hpp"
-
 namespace na62 {
 namespace merger {
 
@@ -53,7 +51,6 @@ private:
 	Receiver* receiver_;
 
 	/// Buffer for incoming data.
-//	boost::array<char, sizeof(EVENT_HDR)> headerBuffer_;
 	char* headerBuffer_;
 	char* dataBuffer_;
 

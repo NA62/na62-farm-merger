@@ -14,7 +14,6 @@
 #include "sockets/Receiver.hpp"
 #include "options/Options.h"
 #include "utils/Utils.h"
-#include "sockets/request.hpp"
 
 #include "dim/MonitorConnector.h"
 #include "dim/CommandConnector.h"

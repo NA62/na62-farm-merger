@@ -2,6 +2,7 @@
 
 #include "Connection.hpp"
 #include "Receiver.hpp"
+#include "Event.hpp"
 
 #include "../utils/Utils.h"
 

@@ -15,9 +15,6 @@
 #include <vector>
 #include <stdint.h>
 
-#include "header.hpp"
-
-
 namespace na62 {
 namespace merger {
 
