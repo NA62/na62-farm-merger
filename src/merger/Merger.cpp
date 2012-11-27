@@ -16,7 +16,6 @@
 namespace na62 {
 namespace merger {
 
-using namespace std;
 Merger::Merger() :
 		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
 }
@@ -93,8 +92,8 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		filePath = Options::STORAGE_DIR + "/" + fileName;
 	}
 
-	ofstream myfile;
-	myfile.open(filePath.data(), ios::out | ios::trunc | ios::binary);
+	std::ofstream myfile;
+	myfile.open(filePath.data(), std::ios::out | std::ios::trunc | std::ios::binary);
 
 	if (!myfile.good()) {
 		std::cerr << "Unable to write to file " << filePath << std::endl;
@@ -113,6 +112,7 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		delete[] (*itr).second.data;
 	}
 	myfile.close();
+	system(std::string("chown na62cdr:vl " + filePath).data());
 
 	writeBKMFile(filePath, fileName, bytes);
 
@@ -132,7 +132,7 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 	std::string BKMFilePath = Options::BKM_DIR + "/" + fileName;
 
 	std::ofstream BKMFile;
-	BKMFile.open(BKMFilePath.data(), ios::out | ios::trunc);
+	BKMFile.open(BKMFilePath.data(), std::ios::out | std::ios::trunc);
 
 	if (!BKMFile.good()) {
 		std::cerr << "Unable to write to file " << BKMFilePath << std::endl;
@@ -151,6 +151,9 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 	BKMFile.write("\n", 1);
 
 	BKMFile.close();
+
+	system(std::string("chown na62cdr:vl " + BKMFilePath).data());
+
 	std::cout << "Wrote BKM file " << BKMFilePath << std::endl;
 }
 
