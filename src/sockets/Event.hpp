@@ -11,8 +11,6 @@
 #ifndef na62_merger_REQUEST_HPP
 #define na62_merger_REQUEST_HPP
 
-#include <string>
-#include <vector>
 #include <stdint.h>
 
 namespace na62 {

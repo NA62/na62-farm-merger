@@ -2,9 +2,6 @@
 #define na62_merger_SERVER_HPP
 
 #include <boost/asio.hpp>
-#include <string>
-#include <vector>
-#include <map>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include "Connection.hpp"
