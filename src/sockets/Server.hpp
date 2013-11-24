@@ -31,7 +31,7 @@ namespace merger {
 
 class Server: public boost::enable_shared_from_this<Server>, private boost::noncopyable {
 public:
-	explicit Server(Merger& merger, zmq::context_t *context);
+	explicit Server(Merger& merger, zmq::context_t *context, uint threadNum);
 
 	~Server();
 
@@ -39,6 +39,7 @@ public:
 private:
 	std::thread thread_;
 	Merger& merger_;
+	uint threadNum_;
 
 	zmq::context_t *context_;
 };

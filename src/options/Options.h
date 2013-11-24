@@ -61,7 +61,7 @@ public:
 	static bool VERBOSE;
 
 	static std::string LISTEN_IP;
-	static std::string LISTEN_PORT;
+	static int LISTEN_PORT;
 
 	static std::string STORAGE_DIR;
 	static std::string BKM_DIR;

@@ -36,25 +36,17 @@ int main(int argc, char* argv[]) {
 	 * Open the tcp socket for the farm servers and an interior ipc socket to distribute the incoming data to the workers
 	 */
 	zmq::context_t context(1);
-	zmq::socket_t clients(context, ZMQ_ROUTER);
-
-	std::stringstream bindURI;
-	bindURI << "tcp://*:" << Options::LISTEN_PORT;
-	clients.bind(bindURI.str().c_str());
-	zmq::socket_t workers(context, ZMQ_DEALER);
-	workers.bind("inproc://workers");
 
 	/*
 	 * Launch the worker threads
 	 */
 	std::vector<Server*> servers;
-	for (int i = 0; i != std::thread::hardware_concurrency(); i++) {
-		servers.push_back(new Server(merger, &context));
+	for (uint threadNum = 0; threadNum != std::thread::hardware_concurrency(); threadNum++) {
+		servers.push_back(new Server(merger, &context, threadNum));
 	}
 
-	/*
-	 * create a proxy from tcp input to the workers
-	 */
-	zmq::proxy(clients, workers, NULL);
+	while(true){
+
+	}
 	return EXIT_SUCCESS;
 }

@@ -18,7 +18,7 @@ namespace po = boost::program_options;
  */
 bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
-std::string Options::LISTEN_PORT;
+int Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
 std::string Options::BKM_DIR;
 int Options::MONITOR_UPDATE_TIME;
@@ -48,16 +48,29 @@ void Options::PrintVM(po::variables_map vm) {
  */
 void Options::Initialize(int argc, char* argv[]) {
 	po::options_description desc("Allowed options");
-	desc.add_options()(OPTION_HELP, "Produce help message")(OPTION_VERBOSE, "Verbose mode")(OPTION_CONFIG_FILE,
-			po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")(OPTION_LISTEN_IP,
-			po::value<std::string>()->required(), "IP of the device the merger should listen to")(OPTION_LISTEN_PORT,
-			po::value<std::string>()->required(), "IP tcp-port the merger should listen to")(OPTION_STORAGE_DIR, po::value<std::string>()->required(),
-			"Path to the directory where burst files should be written to.")(OPTION_BKM_DIR, po::value<std::string>()->required(),
-			"Path to the directory where the bkm files with the path to the original burst file and some statistics should be written after finishing each burst.")(OPTION_DIM_UPDATE_TIME,
-			po::value<int>()->required(), "Milliseconds to sleep between two monitor updates.")(OPTION_MERGER_ID, po::value<int>()->required(),
-			"Identifier of this merger. This will be the first number of the created files.")(OPTION_RUN_NUMBER, po::value<int>()->required(),
-			"Current run number (will be updated via dim)")(OPTION_TIMEOUT, po::value<int>()->required(),
-			"If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.");
+	desc.add_options()(OPTION_HELP, "Produce help message")
+
+	(OPTION_VERBOSE, "Verbose mode")
+
+	(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")
+
+	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
+
+	(OPTION_LISTEN_PORT, po::value<int>()->required(), "IP tcp-port the merger should listen to")
+
+	(OPTION_STORAGE_DIR, po::value<std::string>()->required(), "Path to the directory where burst files should be written to.")
+
+	(OPTION_BKM_DIR, po::value<std::string>()->required(),
+			"Path to the directory where the bkm files with the path to the original burst file and some statistics should be written after finishing each burst.")
+
+	(
+	OPTION_DIM_UPDATE_TIME, po::value<int>()->required(), "Milliseconds to sleep between two monitor updates.")
+
+	(OPTION_MERGER_ID, po::value<int>()->required(), "Identifier of this merger. This will be the first number of the created files.")
+
+	(OPTION_RUN_NUMBER, po::value<int>()->required(), "Current run number (will be updated via dim)")
+
+	(OPTION_TIMEOUT, po::value<int>()->required(), "If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -81,8 +94,7 @@ void Options::Initialize(int argc, char* argv[]) {
 	 * Listening Devic/IP
 	 */
 	LISTEN_IP = vm[OPTION_LISTEN_IP ].as<std::string>();
-	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<std::string>();
-	;
+	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<int>();
 
 	/*
 	 * Storage
