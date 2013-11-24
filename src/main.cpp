@@ -7,16 +7,15 @@
 
 #include <iostream>
 #include <string>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
+#include <thread>
+#include <zmq.hpp>
 
-#include "sockets/Receiver.hpp"
 #include "options/Options.h"
 #include "utils/Utils.h"
 
 #include "dim/MonitorConnector.h"
 #include "dim/CommandConnector.h"
+#include "sockets/Server.hpp"
 
 using namespace na62::merger;
 
@@ -33,14 +32,29 @@ int main(int argc, char* argv[]) {
 	CommandConnector commands(merger);
 	commands.startThread();
 
-	try {
-		na62::merger::Receiver receiver(merger, Options::LISTEN_IP, Options::LISTEN_PORT, boost::thread::hardware_concurrency());
+	/*
+	 * Open the tcp socket for the farm servers and an interior ipc socket to distribute the incoming data to the workers
+	 */
+	zmq::context_t context(1);
+	zmq::socket_t clients(context, ZMQ_ROUTER);
 
-// Run the server until stopped.
-		receiver.run();
-	} catch (std::exception& e) {
-		std::cerr << "exception: " << e.what() << "\n";
+	std::stringstream bindURI;
+	bindURI << "tcp://*:" << Options::LISTEN_PORT;
+	clients.bind(bindURI.str().c_str());
+	zmq::socket_t workers(context, ZMQ_DEALER);
+	workers.bind("inproc://workers");
+
+	/*
+	 * Launch the worker threads
+	 */
+	std::vector<Server*> servers;
+	for (int i = 0; i != std::thread::hardware_concurrency(); i++) {
+		servers.push_back(new Server(merger, &context));
 	}
 
+	/*
+	 * create a proxy from tcp input to the workers
+	 */
+	zmq::proxy(clients, workers, NULL);
 	return EXIT_SUCCESS;
 }

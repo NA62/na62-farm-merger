@@ -20,8 +20,8 @@ Merger::Merger() :
 		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
 }
 
-void Merger::addPacket(EVENT& event) {
-	uint32_t burstID = event.hdr->burstID;
+void Merger::addPacket(EVENT* event) {
+	uint32_t burstID = event->burstID;
 	boost::lock_guard<boost::mutex> lock(eventMutex);
 	if (eventsByIDByBurst[burstID].size() == 0) {
 		/*
@@ -34,8 +34,8 @@ void Merger::addPacket(EVENT& event) {
 
 		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
-	event.hdr->SOBtimestamp = SOBtimestampByBurst[burstID];
-	eventsByIDByBurst[burstID][event.hdr->eventNum] = event;
+	event->SOBtimestamp = SOBtimestampByBurst[burstID];
+	eventsByIDByBurst[burstID][event->eventNum] = event;
 
 }
 
@@ -58,12 +58,12 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	boost::lock_guard<boost::mutex> lock(newBurstMutex);
 
-	std::map<uint32_t, EVENT> burst = eventsByIDByBurst[finishedBurstID];
+	std::map<uint32_t, EVENT*> burst = eventsByIDByBurst[finishedBurstID];
 	saveBurst(burst, finishedBurstID);
 	eventsByIDByBurst.erase(finishedBurstID);
 }
 
-void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) {
+void Merger::saveBurst(std::map<uint32_t, EVENT*>& eventByID, uint32_t& burstID) {
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
@@ -100,16 +100,12 @@ void Merger::saveBurst(std::map<uint32_t, EVENT>& eventByID, uint32_t& burstID) 
 		// carry on to free the memory. myfile.write will not throw!
 	}
 
-	std::map<uint32_t, EVENT>::const_iterator itr;
-
 	size_t bytes = 0;
-	for (itr = eventByID.begin(); itr != eventByID.end(); ++itr) {
-		myfile.write((char*) (*itr).second.hdr, sizeof(struct EVENT_HDR));
-		myfile.write((char*) (*itr).second.data, (*itr).second.hdr->length * 4 - sizeof(struct EVENT_HDR)); // write
-		bytes += (*itr).second.hdr->length * 4;
+	for (auto pair : eventByID) {
+		myfile.write((char*) pair.second, pair.second->length * 4);
+		bytes += pair.second->length * 4;
 
-		delete[] (*itr).second.hdr;
-		delete[] (*itr).second.data;
+		delete[] pair.second;
 	}
 	myfile.close();
 	system(std::string("chown na62cdr:vl " + filePath).data());

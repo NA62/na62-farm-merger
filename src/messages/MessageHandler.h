@@ -8,10 +8,8 @@
 #ifndef MESSAGEHANDLER_H_
 #define MESSAGEHANDLER_H_
 
-#include <iostream>
-#include <boost/thread.hpp>
 #include <stdio.h>
-#include <streambuf>
+#include <iostream>
 
 namespace na62 {
 namespace merger {

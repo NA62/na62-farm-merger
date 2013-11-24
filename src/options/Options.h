@@ -15,7 +15,6 @@
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/thread.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "../exceptions/BadOption.h"
