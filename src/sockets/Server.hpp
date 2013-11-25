@@ -40,8 +40,9 @@ private:
 	std::thread thread_;
 	Merger& merger_;
 	uint threadNum_;
-
 	zmq::context_t *context_;
+
+
 };
 
 typedef boost::shared_ptr<Server> Server_ptr;

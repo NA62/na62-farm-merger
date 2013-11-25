@@ -13,7 +13,7 @@ namespace na62 {
 namespace merger {
 
 Server::Server(Merger& merger, zmq::context_t *context, uint threadNum) :
-		thread_(&Server::thread, this), merger_(merger), context_(context), threadNum_(threadNum) {
+		thread_(&Server::thread, this), merger_(merger), threadNum_(threadNum), context_(context) {
 
 }
 
@@ -35,13 +35,16 @@ void Server::thread() {
 
 	while (true) {
 		//  Wait for next request from client
-		zmq::message_t request;
-		socket.recv(&request);
-		std::cout << "Received request: [" << (char*) request.data() << "]" << std::endl;
-		char* event = new char[request.size()];
+		zmq::message_t eventMessage;
+		socket.recv(&eventMessage);
+		EVENT* event = reinterpret_cast<EVENT*>(new char[eventMessage.size()]);
+		memcpy(event, eventMessage.data(), eventMessage.size());
 
-		memcpy(event, request.data(), request.size());
-		merger_.addPacket(reinterpret_cast<EVENT*>(event));
+		if (eventMessage.size() == event->length * 4) {
+			merger_.addPacket(event);
+		} else {
+			std::cerr << "Received " << eventMessage.size() << " Bytes with an event of length " << (event->length * 4) << std::endl;
+		}
 	}
 }
 
