@@ -43,8 +43,6 @@ void CommandConnector::thread() {
 		message.resize(1024 * 64);
 		boost::posix_time::time_duration timeoutDuration(boost::posix_time::seconds(2));
 
-		boost::posix_time::ptime timeout = boost::posix_time::ptime(boost::posix_time::second_clock::universal_time() + timeoutDuration);
-
 		/*
 		 * Synchronious receive:
 		 */

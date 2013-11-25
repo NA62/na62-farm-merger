@@ -41,11 +41,11 @@ int main(int argc, char* argv[]) {
 	 * Launch the worker threads
 	 */
 	std::vector<Server*> servers;
-	for (uint threadNum = 0; threadNum != 1 /* std::thread::hardware_concurrency()*/; threadNum++) {
+	for (uint threadNum = 0; threadNum != Options::NUMBER_OF_LISTEN_PORTS; threadNum++) {
 		servers.push_back(new Server(merger, &context, threadNum));
 	}
 
-	while(true){
+	while (true) {
 
 	}
 	return EXIT_SUCCESS;

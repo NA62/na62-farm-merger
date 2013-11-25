@@ -18,7 +18,8 @@ namespace po = boost::program_options;
  */
 bool Options::VERBOSE;
 std::string Options::LISTEN_IP;
-int Options::LISTEN_PORT;
+uint Options::FIRST_LISTEN_PORT;
+uint Options::NUMBER_OF_LISTEN_PORTS;
 std::string Options::STORAGE_DIR;
 std::string Options::BKM_DIR;
 int Options::MONITOR_UPDATE_TIME;
@@ -56,7 +57,9 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
 
-	(OPTION_LISTEN_PORT, po::value<int>()->required(), "IP tcp-port the merger should listen to")
+	(OPTION_FIRST_LISTEN_PORT, po::value<int>()->required(), "First tcp-port the merger should listen to")
+
+	(OPTION_NUMBER_OF_PORTS, po::value<int>()->required(), "Number of censecutive ports letaive to the first listen port")
 
 	(OPTION_STORAGE_DIR, po::value<std::string>()->required(), "Path to the directory where burst files should be written to.")
 
@@ -94,7 +97,8 @@ void Options::Initialize(int argc, char* argv[]) {
 	 * Listening Devic/IP
 	 */
 	LISTEN_IP = vm[OPTION_LISTEN_IP ].as<std::string>();
-	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<int>();
+	FIRST_LISTEN_PORT = vm[OPTION_FIRST_LISTEN_PORT ].as<int>();
+	NUMBER_OF_LISTEN_PORTS = vm[OPTION_NUMBER_OF_PORTS ].as<int>();
 
 	/*
 	 * Storage

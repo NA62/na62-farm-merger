@@ -37,7 +37,8 @@ namespace merger {
 #define OPTION_CONFIG_FILE (char*)"configFile"
 
 #define OPTION_LISTEN_IP (char*)"listenIP"
-#define OPTION_LISTEN_PORT (char*)"listenPort"
+#define OPTION_FIRST_LISTEN_PORT (char*)"firstListenPort"
+#define OPTION_NUMBER_OF_PORTS (char*)"numberOfListenPorts"
 
 #define OPTION_STORAGE_DIR (char*)"storageDir"
 #define OPTION_BKM_DIR (char*)"bkmDir"
@@ -61,7 +62,8 @@ public:
 	static bool VERBOSE;
 
 	static std::string LISTEN_IP;
-	static int LISTEN_PORT;
+	static uint FIRST_LISTEN_PORT;
+	static uint NUMBER_OF_LISTEN_PORTS;
 
 	static std::string STORAGE_DIR;
 	static std::string BKM_DIR;

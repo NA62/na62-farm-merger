@@ -28,7 +28,7 @@ void Server::thread() {
 	zmq::socket_t socket(*context_, ZMQ_PULL);
 
 	std::stringstream bindURI;
-	bindURI << "tcp://*:" << Options::LISTEN_PORT + threadNum_;
+	bindURI << "tcp://*:" << Options::FIRST_LISTEN_PORT + threadNum_;
 
 	std::cout << "Opening ZMQ socket " << bindURI.str() << std::endl;
 	socket.bind(bindURI.str().c_str());
