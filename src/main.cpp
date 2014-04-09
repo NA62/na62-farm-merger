@@ -58,11 +58,11 @@ int main(int argc, char* argv[]) {
 	 * Launch the worker threads
 	 */
 	std::vector<Server*> servers;
-	int threadNum = Options::THREAD_NUM;
-	if (threadNum == 0) {
-		threadNum = std::thread::hardware_concurrency();
+	uint numberOfThreads = Options::THREAD_NUM;
+	if (numberOfThreads == 0) {
+		numberOfThreads = std::thread::hardware_concurrency();
 	}
-	for (uint threadNum = 0; threadNum != Options::THREAD_NUM; threadNum++) {
+	for (uint threadNum = 0; numberOfThreads != threadNum; threadNum++) {
 		servers.push_back(new Server(merger, &context));
 		servers[threadNum]->startThread(threadNum, -1, 15);
 	}
