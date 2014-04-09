@@ -36,12 +36,12 @@ namespace merger {
 #define OPTION_VERBOSE (char*)"verbose"
 #define OPTION_CONFIG_FILE (char*)"configFile"
 
-#define OPTION_LISTEN_IP (char*)"listenIP"
-#define OPTION_FIRST_LISTEN_PORT (char*)"firstListenPort"
-#define OPTION_NUMBER_OF_PORTS (char*)"numberOfListenPorts"
+#define OPTION_LISTEN_PORT (char*)"listenPort"
 
 #define OPTION_STORAGE_DIR (char*)"storageDir"
 #define OPTION_BKM_DIR (char*)"bkmDir"
+
+#define OPTION_THREAD_NUM (char*)"numberOfWorkerThreads"
 
 #define OPTION_DIM_UPDATE_TIME (char*)"dimUpdateTime"
 
@@ -61,12 +61,12 @@ public:
 	 */
 	static bool VERBOSE;
 
-	static std::string LISTEN_IP;
-	static uint FIRST_LISTEN_PORT;
-	static uint NUMBER_OF_LISTEN_PORTS;
+	static uint LISTEN_PORT;
 
 	static std::string STORAGE_DIR;
 	static std::string BKM_DIR;
+
+	static int THREAD_NUM;
 
 	static int MONITOR_UPDATE_TIME;
 
