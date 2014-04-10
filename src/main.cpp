@@ -12,8 +12,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
-#include <thread>
 #include <vector>
+#include <thread>
 
 #include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
@@ -50,9 +50,10 @@ int main(int argc, char* argv[]) {
 	std::cout << "Opening ZMQ socket " << bindURI.str() << std::endl;
 	frontEnd.bind(bindURI.str().c_str());
 
-	backEnd.bind(SERVER_ADDR);
+	int highWaterMark = 10000000;
+	frontEnd.setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
 
-	sleep(1);
+	backEnd.bind(SERVER_ADDR);
 
 	/*
 	 * Launch the worker threads
