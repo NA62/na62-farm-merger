@@ -11,10 +11,9 @@
 #ifndef na62_merger_Server_HPP
 #define na62_merger_Server_HPP
 
-#include <boost/noncopyable.hpp>
-#include <boost/smart_ptr/enable_shared_from_this.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <thread>
+#include "../utils/AExecutable.h"
+
+#define SERVER_ADDR "inproc://worker"
 
 namespace zmq {
 class context_t;
@@ -29,23 +28,18 @@ class Merger;
 namespace na62 {
 namespace merger {
 
-class Server: public boost::enable_shared_from_this<Server>, private boost::noncopyable {
+class Server: public AExecutable {
 public:
-	explicit Server(Merger& merger, zmq::context_t *context, uint threadNum);
+	explicit Server(Merger& merger, zmq::context_t *context);
 
 	~Server();
 
 	void thread();
 private:
-	std::thread thread_;
 	Merger& merger_;
-	uint threadNum_;
 	zmq::context_t *context_;
 
-
 };
-
-typedef boost::shared_ptr<Server> Server_ptr;
 
 } // namespace merger
 } // namespace na62

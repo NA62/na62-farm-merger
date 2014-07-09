@@ -5,16 +5,20 @@
  *      Author: kunzej
  */
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <zmq.h>
+#include <zmq.hpp>
+#include <cstdlib>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <thread>
-#include <zmq.hpp>
 
-#include "options/Options.h"
-#include "utils/Utils.h"
-
-#include "dim/MonitorConnector.h"
 #include "dim/CommandConnector.h"
+#include "dim/MonitorConnector.h"
+#include "merger/Merger.hpp"
+#include "options/Options.h"
 #include "sockets/Server.hpp"
 
 using namespace na62::merger;
@@ -37,16 +41,34 @@ int main(int argc, char* argv[]) {
 	 */
 	zmq::context_t context(1);
 
+	zmq::socket_t frontEnd(context, ZMQ_PULL);
+	zmq::socket_t backEnd(context, ZMQ_PUSH);
+
+	std::stringstream bindURI;
+	bindURI << "tcp://*:" << Options::LISTEN_PORT;
+
+	std::cout << "Opening ZMQ socket " << bindURI.str() << std::endl;
+	frontEnd.bind(bindURI.str().c_str());
+
+	int highWaterMark = 10000000;
+	frontEnd.setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
+
+	backEnd.bind(SERVER_ADDR);
+
 	/*
 	 * Launch the worker threads
 	 */
 	std::vector<Server*> servers;
-	for (uint threadNum = 0; threadNum != Options::NUMBER_OF_LISTEN_PORTS; threadNum++) {
-		servers.push_back(new Server(merger, &context, threadNum));
+	uint numberOfThreads = Options::THREAD_NUM;
+	if (numberOfThreads == 0) {
+		numberOfThreads = std::thread::hardware_concurrency();
+	}
+	for (uint threadNum = 0; numberOfThreads != threadNum; threadNum++) {
+		servers.push_back(new Server(merger, &context));
+		servers[threadNum]->startThread(threadNum, -1, 15);
 	}
 
-	while (true) {
+	zmq::proxy(frontEnd, backEnd, NULL);
 
-	}
 	return EXIT_SUCCESS;
 }

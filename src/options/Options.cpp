@@ -17,11 +17,11 @@ namespace po = boost::program_options;
  * Configurable Variables
  */
 bool Options::VERBOSE;
-std::string Options::LISTEN_IP;
-uint Options::FIRST_LISTEN_PORT;
-uint Options::NUMBER_OF_LISTEN_PORTS;
+uint Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
 std::string Options::BKM_DIR;
+int Options::THREAD_NUM;
+;
 int Options::MONITOR_UPDATE_TIME;
 int Options::MERGER_ID;
 int Options::RUN_NUMBER;
@@ -55,16 +55,14 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")
 
-	(OPTION_LISTEN_IP, po::value<std::string>()->required(), "IP of the device the merger should listen to")
-
-	(OPTION_FIRST_LISTEN_PORT, po::value<int>()->required(), "First tcp-port the merger should listen to")
-
-	(OPTION_NUMBER_OF_PORTS, po::value<int>()->required(), "Number of censecutive ports letaive to the first listen port")
+	(OPTION_LISTEN_PORT, po::value<int>()->required(), "tcp-port the merger should listen to")
 
 	(OPTION_STORAGE_DIR, po::value<std::string>()->required(), "Path to the directory where burst files should be written to.")
 
 	(OPTION_BKM_DIR, po::value<std::string>()->required(),
 			"Path to the directory where the bkm files with the path to the original burst file and some statistics should be written after finishing each burst.")
+
+	(OPTION_THREAD_NUM, po::value<int>()->default_value(0), "Number of worker threads. If it is 0 the number of CPU cores will be used")
 
 	(
 	OPTION_DIM_UPDATE_TIME, po::value<int>()->required(), "Milliseconds to sleep between two monitor updates.")
@@ -94,11 +92,9 @@ void Options::Initialize(int argc, char* argv[]) {
 	VERBOSE = vm.count(OPTION_VERBOSE) > 0;
 
 	/*
-	 * Listening Devic/IP
+	 * Listening port
 	 */
-	LISTEN_IP = vm[OPTION_LISTEN_IP ].as<std::string>();
-	FIRST_LISTEN_PORT = vm[OPTION_FIRST_LISTEN_PORT ].as<int>();
-	NUMBER_OF_LISTEN_PORTS = vm[OPTION_NUMBER_OF_PORTS ].as<int>();
+	LISTEN_PORT = vm[OPTION_LISTEN_PORT ].as<int>();
 
 	/*
 	 * Storage
