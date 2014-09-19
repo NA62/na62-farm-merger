@@ -16,6 +16,7 @@
 #include <thread>
 
 #include <socket/ZMQHandler.h>
+#include <monitoring/IPCHandler.h>
 
 #include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
@@ -71,6 +72,8 @@ int main(int argc, char* argv[]) {
 		servers.push_back(new Server(merger, &context));
 		servers[threadNum]->startThread(threadNum, -1, 15);
 	}
+
+	monitor.updateState(na62::STATE::RUNNING);
 
 	zmq::proxy(frontEnd, backEnd, NULL);
 
