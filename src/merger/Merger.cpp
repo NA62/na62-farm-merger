@@ -157,9 +157,9 @@ std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint3
 	char buffer[64];
 
 	if (duplicate == 0) {
-		sprintf(buffer, "cdr%02d%06d-%04d.dat", Options::MERGER_ID, runNumber, burstID);
+		sprintf(buffer, "cdr%02u%06u-%04u.dat", Options::MERGER_ID, runNumber, burstID);
 	} else {
-		sprintf(buffer, "cdr%02d%06d-%04d_%d.dat", Options::MERGER_ID, runNumber, burstID, duplicate);
+		sprintf(buffer, "cdr%02u%06u-%04u_%u.dat", Options::MERGER_ID, runNumber, burstID, duplicate);
 	}
 	return std::string(buffer);
 }
