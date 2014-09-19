@@ -9,7 +9,6 @@
 #define COMMANDCONNECTOR_H_
 
 #include <boost/noncopyable.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
 
 #include "../utils/AExecutable.h"
 #include "../merger/Merger.hpp"
@@ -25,9 +24,6 @@ private:
 	void thread();
 
 	Merger& merger_;
-
-	typedef boost::shared_ptr<boost::interprocess::message_queue> message_queue_ptr;
-	message_queue_ptr commandQueue_;
 };
 
 } /* namespace merger */

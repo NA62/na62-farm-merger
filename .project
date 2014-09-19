@@ -3,6 +3,8 @@
 	<name>na62-merger</name>
 	<comment></comment>
 	<projects>
+		<project>na62-farm-lib</project>
+		<project>na62-farm-lib-networking</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

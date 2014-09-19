@@ -15,6 +15,8 @@
 #include <vector>
 #include <thread>
 
+#include <socket/ZMQHandler.h>
+
 #include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
 #include "merger/Merger.hpp"
@@ -29,6 +31,8 @@ int main(int argc, char* argv[]) {
 	 */
 	std::cout << "Initializing Options" << std::endl;
 	Options::Initialize(argc, argv);
+
+	na62::ZMQHandler::Initialize(1);
 
 	Merger merger;
 	MonitorConnector monitor(merger);
