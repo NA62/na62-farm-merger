@@ -5,9 +5,9 @@
 #include <zmq.hpp>
 #include <cstring>
 #include <iostream>
+#include <structs/Event.h>
 
 #include "../merger/Merger.hpp"
-#include "Event.hpp"
 
 namespace na62 {
 namespace merger {
@@ -33,7 +33,7 @@ void Server::thread() {
 		//  Wait for next request from client
 		zmq::message_t eventMessage;
 		socket.recv(&eventMessage);
-		EVENT* event = reinterpret_cast<EVENT*>(new char[eventMessage.size()]);
+		EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(new char[eventMessage.size()]);
 
 		/*
 		 * TODO: do we really have to memcpy here?
