@@ -12,13 +12,16 @@
 #include <sys/types.h>
 #include <map>
 #include <vector>
-#include <thread>
+
+namespace na62 {
+struct EVENT_HDR;
+} /* namespace na62 */
 
 namespace na62 {
 namespace dim {
 
 struct EobDataHdr {
-	u_int16_t length;
+	u_int16_t length; // number of bytes including this header
 	u_int8_t blockID;
 	u_int8_t detectorID;
 	u_int32_t eobTimestamp;
@@ -31,7 +34,7 @@ public:
 
 	void run();
 
-
+	EVENT_HDR* getEobEvent(uint eobTimeStamp, uint burstID);
 private:
 	DimListener dimListener_;
 	std::map<uint, std::vector<EobDataHdr*>> eobDataByEobTimeStamp;
