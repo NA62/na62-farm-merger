@@ -10,7 +10,9 @@
 #include <dim/dic.hxx>
 #include <iostream>
 #include <glog/logging.h>
+#include <boost/thread.hpp>
 #include <thread>
+#include <mutex>
 
 #include <structs/Event.h>
 
@@ -44,8 +46,8 @@ EobDataHdr* EobCollector::getDataHdr(char* serviceName) {
 }
 
 void EobCollector::run() {
-	std::thread* lastEobHandleThread;
-	dimListener_.registerEobListener([this, &lastEobHandleThread/* call by reference! */](uint eob) {
+	std::mutex mutex;
+	dimListener_.registerEobListener([this, &mutex](uint eob) {
 		/*
 		 * This is executed after every eob update
 		 */
@@ -58,35 +60,28 @@ void EobCollector::run() {
 		/*
 		 * Start a thread that will sleep a while and read the EOB services afterwards
 		 */
-		std::thread* eobHandleThread = new std::thread([this, burstID, eob, lastEobHandleThread/* call by value! */]() {
-					/*
-					 * Wait until the last spawned thread has finished and delete it afterwards
-					 */
-					if(lastEobHandleThread!=nullptr) {
-						lastEobHandleThread->join();
-						delete lastEobHandleThread;
-					}
+		boost::thread([this, &mutex, eob, burstID]() {
 					/*
 					 * Wait for the services to update the data
 					 */
 					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
 
+					std::lock_guard<std::mutex> lock(mutex);
 					DimBrowser dimBrowser;
 					char *service, *format;
-					dimBrowser.getServices("NA62/*/EOB");
+					dimBrowser.getServices("NA62/EOB/*");
 					while (dimBrowser.getNextService(service, format)) {
 						std::cout << "service found: " << service << "\t" << format << std::endl;
 
 						EobDataHdr* hdr = getDataHdr(service);
 						if (hdr != nullptr && hdr->eobTimestamp==eob) {
-							eobDataBySourceIDByBurstID[burstID][hdr->detectorID] = hdr;
+							eobDataBySourceIDByBurstID[burstID][hdr->detectorID].push_back(hdr);
 						} else {
 							delete hdr;
 						}
 					}
 				});
 
-		lastEobHandleThread = eobHandleThread;
 	});
 }
 
@@ -107,16 +102,18 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	/*
 	 * Calculate the new event length
 	 */
-	for(auto& sourceIDAndhdr: eobDataMap) {
-		int subeventLength = sourceIDAndhdr.second->length;
-		/*
-		 * 4 Byte alignment for every event
-		 */
-		if (subeventLength % 4 != 0) {
-			subeventLength = subeventLength + (4-subeventLength % 4);
-		}
+	for(auto& sourceIDAndhdrs: eobDataMap) {
+		for(auto hdr: sourceIDAndhdrs.second) {
+			int subeventLength = hdr->length;
+			/*
+			 * 4 Byte alignment for every event
+			 */
+			if (subeventLength % 4 != 0) {
+				subeventLength = subeventLength + (4-subeventLength % 4);
+			}
 
-		eventBufferSize += subeventLength;
+			eventBufferSize += subeventLength;
+		}
 	}
 
 	if(eventBufferSize == event->length*4) {
@@ -131,21 +128,20 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 
 	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
 	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
-		EVENT_DATA_PTR* sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
+		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-		if(eobDataMap.count(sourceIdAndOffset->sourceID)==0) {
+		if(eobDataMap.count(sourceIdAndOffset.sourceID)==0) {
 			continue;
 		}
 
-		EobDataHdr* data = eobDataMap[sourceIdAndOffset->sourceID];
 		uint bytesToCopyFromOldEvent = 0;
 		if(sourceNum!=event->numberOfDetectors-1) {
-			EVENT_DATA_PTR* nextSourceIdAndOffset = sourceIdAndOffsets[sourceNum+1];
+			EVENT_DATA_PTR nextSourceIdAndOffset = sourceIdAndOffsets[sourceNum+1];
 
 			/*
 			 * Copy original event
 			 */
-			bytesToCopyFromOldEvent = nextSourceIdAndOffset->offset*4-oldEventPtr;
+			bytesToCopyFromOldEvent = nextSourceIdAndOffset.offset*4-oldEventPtr;
 		} else {
 			/*
 			 * The last fragment goes from oldEventPtr to the trailer
@@ -158,16 +154,14 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		newEventPtr += bytesToCopyFromOldEvent;
 
 		/*
-		 * Copy EOB data
+		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
-		memcpy(eventBuffer+newEventPtr, data, data->length);
-		newEventPtr+=data->length;
-
-		/*
-		 * Delete the EOB data
-		 */
-		eobDataMap.erase(data->detectorID);
-		delete data;
+		for(EobDataHdr* data: eobDataMap[sourceIdAndOffset.sourceID]) {
+			memcpy(eventBuffer+newEventPtr, data, data->length);
+			newEventPtr+=data->length;
+			delete data;
+		}
+		eobDataMap.erase(sourceIdAndOffset.sourceID);
 	}
 
 	/*
