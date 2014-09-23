@@ -34,6 +34,10 @@ void Server::thread() {
 		zmq::message_t eventMessage;
 		socket.recv(&eventMessage);
 		EVENT* event = reinterpret_cast<EVENT*>(new char[eventMessage.size()]);
+
+		/*
+		 * TODO: do we really have to memcpy here?
+		 */
 		memcpy(event, eventMessage.data(), eventMessage.size());
 
 		if (eventMessage.size() == event->length * 4) {

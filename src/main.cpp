@@ -23,8 +23,10 @@
 #include "merger/Merger.hpp"
 #include "options/Options.h"
 #include "sockets/Server.hpp"
+#include "dim/EobCollector.h"
 
 using namespace na62::merger;
+using namespace na62;
 
 int main(int argc, char* argv[]) {
 	/*
@@ -74,6 +76,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	monitor.updateState(na62::STATE::RUNNING);
+
+
+	dim::EobCollector eobCollector;
+	eobCollector.run();
 
 	zmq::proxy(frontEnd, backEnd, NULL);
 

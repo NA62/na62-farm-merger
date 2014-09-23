@@ -21,11 +21,12 @@ uint Options::LISTEN_PORT;
 std::string Options::STORAGE_DIR;
 std::string Options::BKM_DIR;
 int Options::THREAD_NUM;
-;
+
 int Options::MONITOR_UPDATE_TIME;
 int Options::MERGER_ID;
 int Options::RUN_NUMBER;
 int Options::TIMEOUT;
+int Options::EOB_COLLECTION_TIMEOUT;
 
 void Options::PrintVM(po::variables_map vm) {
 	using namespace po;
@@ -71,7 +72,11 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	(OPTION_RUN_NUMBER, po::value<int>()->required(), "Current run number (will be updated via dim)")
 
-	(OPTION_TIMEOUT, po::value<int>()->required(), "If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.");
+	(OPTION_TIMEOUT, po::value<int>()->required(), "If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.")
+
+	(OPTION_EOB_COLLECTION_TIMEOUT, po::value<int>()->required(), "Wait this many ms after an EOB before reading the EOB services")
+
+	;
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -116,6 +121,8 @@ void Options::Initialize(int argc, char* argv[]) {
 	RUN_NUMBER = vm[OPTION_RUN_NUMBER ].as<int>();
 
 	TIMEOUT = vm[OPTION_TIMEOUT ].as<int>();
+
+	EOB_COLLECTION_TIMEOUT = vm[OPTION_EOB_COLLECTION_TIMEOUT].as<int>();
 }
 } /* namespace merger */
 } /* namespace na62 */
