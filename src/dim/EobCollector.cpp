@@ -53,10 +53,12 @@ void EobCollector::run() {
 			return;
 		}
 
+		uint burstID = dimListener_.getBurstNumber();
+
 		/*
 		 * Start a thread that will sleep a while and read the EOB services afterwards
 		 */
-		std::thread* eobHandleThread = new std::thread([this, eob, lastEobHandleThread/* call by value! */]() {
+		std::thread* eobHandleThread = new std::thread([this, burstID, eob, lastEobHandleThread/* call by value! */]() {
 					/*
 					 * Wait until the last spawned thread has finished and delete it afterwards
 					 */
@@ -77,7 +79,7 @@ void EobCollector::run() {
 
 						EobDataHdr* hdr = getDataHdr(service);
 						if (hdr != nullptr && hdr->eobTimestamp==eob) {
-							eobDataByEobTimeStamp[eob].push_back(hdr);
+							eobDataBySourceIDByBurstID[burstID][hdr->detectorID] = hdr;
 						} else {
 							delete hdr;
 						}
@@ -88,16 +90,25 @@ void EobCollector::run() {
 	});
 }
 
-EVENT_HDR* EobCollector::getEobEvent(uint eobTimeStamp, uint burstID) {
-	if (eobDataByEobTimeStamp.count(eobTimeStamp) == 0) {
-		LOG(ERROR)<<"Trying to write EOB data with timestamp " << eobTimeStamp << " even though it does not exist";
+EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
+	if (eobDataBySourceIDByBurstID.count(event->burstID) == 0) {
+		LOG(ERROR)<<"Trying to write EOB data of burst " << event->burstID << " even though it does not exist";
+		return nullptr;
 	}
 
-	uint eventBufferSize = sizeof(EVENT_HDR);
+	uint eventBufferSize = event->length*4;
 
-	auto eobDataVector = eobDataByEobTimeStamp[eobTimeStamp];
-	for(EobDataHdr* hdr: eobDataVector) {
-		int subeventLength = hdr->length;
+	auto eobDataMap = eobDataBySourceIDByBurstID[event->burstID];
+
+	if(eobDataMap.size()==0) {
+		return nullptr;
+	}
+
+	/*
+	 * Calculate the new event length
+	 */
+	for(auto& sourceIDAndhdr: eobDataMap) {
+		int subeventLength = sourceIDAndhdr.second->length;
 		/*
 		 * 4 Byte alignment for every event
 		 */
@@ -105,91 +116,178 @@ EVENT_HDR* EobCollector::getEobEvent(uint eobTimeStamp, uint burstID) {
 			subeventLength = subeventLength + (4-subeventLength % 4);
 		}
 
-		eventBufferSize+=4/*pointer table*/+ subeventLength;
+		eventBufferSize += subeventLength;
 	}
 
-	eventBufferSize += sizeof(EVENT_TRAILER);
+	if(eventBufferSize == event->length*4) {
+		return nullptr;
+	}
 
 	char* eventBuffer = new char[eventBufferSize];
-
 	struct EVENT_HDR* header = (struct EVENT_HDR*) eventBuffer;
 
-	header->eventNum = 0xFFFFFF;
-	header->format = 0xFF;
-	// header->length will be written later on
-	header->burstID = burstID;
-	header->timestamp = eobTimeStamp;
-	header->triggerWord = 0;
-	header->reserved1 = 0;
-	header->fineTime = 0;
-	header->numberOfDetectors = eobDataVector.size();
-	header->reserved2 = 0;
-	header->processingID = 0;
-	header->SOBtimestamp = 0;// Will be set by the merger
+	uint oldEventPtr = 0;
+	uint newEventPtr = 0;
 
-	uint32_t sizeOfPointerTable = 4 * header->numberOfDetectors;
-	uint32_t pointerTableOffset = sizeof(struct EVENT_HDR);
-	uint32_t eventOffset = sizeof(struct EVENT_HDR) + sizeOfPointerTable;
+	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
+	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
+		EVENT_DATA_PTR* sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-	for(EobDataHdr* hdr: eobDataVector) {
-		uint32_t eventOffset32 = eventOffset / 4;
-
-		/*
-		 * Put the sub-detector into the pointer table
-		 */
-		std::memcpy(eventBuffer + pointerTableOffset, &eventOffset32, 3);
-		std::memset(eventBuffer + pointerTableOffset + 3, hdr->detectorID, 1);
-		pointerTableOffset += 4;
-
-		/*
-		 * Write the EOB data
-		 */
-		memcpy(eventBuffer + eventOffset ,
-				((char*)hdr)+sizeof(EobDataHdr), hdr->length );
-		eventOffset += hdr->length;
-
-		/*
-		 * 32-bit alignment
-		 */
-		if (eventOffset % 4 != 0) {
-			memset(eventBuffer + eventOffset, 0, eventOffset % 4);
-			eventOffset += eventOffset % 4;
+		if(eobDataMap.count(sourceIdAndOffset->sourceID)==0) {
+			continue;
 		}
 
-		delete[] hdr;
+		EobDataHdr* data = eobDataMap[sourceIdAndOffset->sourceID];
+		uint bytesToCopyFromOldEvent = 0;
+		if(sourceNum!=event->numberOfDetectors-1) {
+			EVENT_DATA_PTR* nextSourceIdAndOffset = sourceIdAndOffsets[sourceNum+1];
+
+			/*
+			 * Copy original event
+			 */
+			bytesToCopyFromOldEvent = nextSourceIdAndOffset->offset*4-oldEventPtr;
+		} else {
+			/*
+			 * The last fragment goes from oldEventPtr to the trailer
+			 */
+			bytesToCopyFromOldEvent = (event->length*4-sizeof(EVENT_TRAILER))-oldEventPtr;
+		}
+
+		memcpy(eventBuffer+newEventPtr, event+oldEventPtr, bytesToCopyFromOldEvent);
+		oldEventPtr += bytesToCopyFromOldEvent;
+		newEventPtr += bytesToCopyFromOldEvent;
+
+		/*
+		 * Copy EOB data
+		 */
+		memcpy(eventBuffer+newEventPtr, data, data->length);
+		newEventPtr+=data->length;
+
+		/*
+		 * Delete the EOB data
+		 */
+		eobDataMap.erase(data->detectorID);
+		delete data;
 	}
 
 	/*
-	 * Trailer
+	 * Copy the rest including the trailer (or only the trailer if the last fragment has EOB data
 	 */
-	EVENT_TRAILER* trailer = (EVENT_TRAILER*) (eventBuffer + eventOffset);
-	trailer->eventNum = header->eventNum;
-	trailer->reserved = 0;
+	memcpy(eventBuffer+newEventPtr, event+oldEventPtr, event->length*4-oldEventPtr);
 
-	const uint eventLength = eventOffset + 4/*trailer*/;
-	header->length = eventLength / 4;
-
-	assert(eventBufferSize == eventLength);
-
-	/*
-	 * Cleanup
-	 */
-	eobDataByEobTimeStamp.erase(eobTimeStamp);
-
-	/*
-	 * Remove old EOB data not written by this merger
-	 */
-	for(auto pair: eobDataByEobTimeStamp) {
-		uint ts = pair.first;
-		if(ts < eobTimeStamp) {
-			for(auto data: pair.second) {
-				delete[] data;
-			}
-			eobDataByEobTimeStamp.erase(ts);
-		}
-	}
+	delete[] event;
 
 	return header;
 }
+
+//EVENT_HDR* EobCollector::getEobEvent(uint burstID) {
+//	if (eobDataBySourceIDByBurstID.count(burstID) == 0) {
+//		LOG(ERROR)<<"Trying to write EOB data of burst " << burstID << " even though it does not exist";
+//		return nullptr;
+//	}
+//
+//	uint eventBufferSize = sizeof(EVENT_HDR);
+//
+//	auto eobDataVector = eobDataBySourceIDByBurstID[burstID];
+//
+//	if(eobDataVector.size()==0) {
+//		return nullptr;
+//	}
+//
+//	for(EobDataHdr* hdr: eobDataVector) {
+//		int subeventLength = hdr->length;
+//		/*
+//		 * 4 Byte alignment for every event
+//		 */
+//		if (subeventLength % 4 != 0) {
+//			subeventLength = subeventLength + (4-subeventLength % 4);
+//		}
+//
+//		eventBufferSize+=4/*pointer table*/+ subeventLength;
+//	}
+//
+//	eventBufferSize += sizeof(EVENT_TRAILER);
+//
+//	char* eventBuffer = new char[eventBufferSize];
+//
+//	struct EVENT_HDR* header = (struct EVENT_HDR*) eventBuffer;
+//
+//	header->eventNum = 0xFFFFFF;
+//	header->format = 0xFF;
+//	// header->length will be written later on
+//	header->burstID = burstID;
+//	header->timestamp = eobDataVector[0]->eobTimestamp;
+//	header->triggerWord = 0;
+//	header->reserved1 = 0;
+//	header->fineTime = 0;
+//	header->numberOfDetectors = eobDataVector.size();
+//	header->reserved2 = 0;
+//	header->processingID = 0;
+//	header->SOBtimestamp = 0;// Will be set by the merger
+//
+//	uint32_t sizeOfPointerTable = 4 * header->numberOfDetectors;
+//	uint32_t pointerTableOffset = sizeof(struct EVENT_HDR);
+//	uint32_t eventOffset = sizeof(struct EVENT_HDR) + sizeOfPointerTable;
+//
+//	for(EobDataHdr* hdr: eobDataVector) {
+//		uint32_t eventOffset32 = eventOffset / 4;
+//
+//		/*
+//		 * Put the sub-detector into the pointer table
+//		 */
+//		std::memcpy(eventBuffer + pointerTableOffset, &eventOffset32, 3);
+//		std::memset(eventBuffer + pointerTableOffset + 3, hdr->detectorID, 1);
+//		pointerTableOffset += 4;
+//
+//		/*
+//		 * Write the EOB data
+//		 */
+//		memcpy(eventBuffer + eventOffset ,
+//				((char*)hdr)+sizeof(EobDataHdr), hdr->length );
+//		eventOffset += hdr->length;
+//
+//		/*
+//		 * 32-bit alignment
+//		 */
+//		if (eventOffset % 4 != 0) {
+//			memset(eventBuffer + eventOffset, 0, eventOffset % 4);
+//			eventOffset += eventOffset % 4;
+//		}
+//
+//		delete[] hdr;
+//	}
+//
+//	/*
+//	 * Trailer
+//	 */
+//	EVENT_TRAILER* trailer = (EVENT_TRAILER*) (eventBuffer + eventOffset);
+//	trailer->eventNum = header->eventNum;
+//	trailer->reserved = 0;
+//
+//	const uint eventLength = eventOffset + 4/*trailer*/;
+//	header->length = eventLength / 4;
+//
+//	assert(eventBufferSize == eventLength);
+//
+//	/*
+//	 * Cleanup
+//	 */
+//	eobDataBySourceIDByBurstID.erase(burstID);
+//
+//	/*
+//	 * Remove old EOB data not written by this merger
+//	 */
+//	for(auto pair: eobDataBySourceIDByBurstID) {
+//		uint ts = pair.first;
+//		if(ts < burstID) {
+//			for(auto data: pair.second) {
+//				delete[] data;
+//			}
+//			eobDataBySourceIDByBurstID.erase(ts);
+//		}
+//	}
+//
+//	return header;
+//}
 }
 }

@@ -16,6 +16,8 @@
 #include <string>
 #include <structs/Event.h>
 
+#include "../dim/EobCollector.h"
+
 namespace na62 {
 namespace merger {
 
@@ -58,6 +60,8 @@ private:
 	std::string generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
+
+	dim::EobCollector eobCollector_;
 
 	std::map<uint32_t, std::map<uint32_t, EVENT_HDR*> > eventsByIDByBurst;
 	std::map<uint32_t, uint32_t> runNumberByBurst;

@@ -12,6 +12,7 @@
 #include <structs/Event.h>
 
 #include "../options/Options.h"
+
 #include "Merger.hpp"
 
 namespace na62 {
@@ -19,6 +20,8 @@ namespace merger {
 
 Merger::Merger() :
 		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
+
+	eobCollector_.run();
 }
 
 void Merger::addPacket(EVENT_HDR* event) {
@@ -60,6 +63,10 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	std::lock_guard < std::mutex > lock(newBurstMutex);
 
 	std::map<uint32_t, EVENT_HDR*> burst = eventsByIDByBurst[finishedBurstID];
+
+	EVENT_HDR* oldEobEvent = (--burst.end())->second;
+	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
+
 	saveBurst(burst, finishedBurstID);
 	eventsByIDByBurst.erase(finishedBurstID);
 }

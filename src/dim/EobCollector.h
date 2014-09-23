@@ -34,10 +34,10 @@ public:
 
 	void run();
 
-	EVENT_HDR* getEobEvent(uint eobTimeStamp, uint burstID);
+	EVENT_HDR* addEobDataToEvent(EVENT_HDR* event);
 private:
 	DimListener dimListener_;
-	std::map<uint, std::vector<EobDataHdr*>> eobDataByEobTimeStamp;
+	std::map<uint, std::map<uint8_t, EobDataHdr*>> eobDataBySourceIDByBurstID;
 
 	/**
 	 * Returns the data stored at the service identified by the given serviceName.
