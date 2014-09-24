@@ -67,6 +67,8 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	EVENT_HDR* oldEobEvent = (--burst.end())->second;
 	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
 
+	eventsByIDByBurst[finishedBurstID][oldEobEvent->eventNum] = eobEvent;
+
 	saveBurst(burst, finishedBurstID);
 	eventsByIDByBurst.erase(finishedBurstID);
 }

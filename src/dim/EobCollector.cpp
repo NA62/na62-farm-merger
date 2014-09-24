@@ -69,7 +69,7 @@ void EobCollector::run() {
 					std::lock_guard<std::mutex> lock(mutex);
 					DimBrowser dimBrowser;
 					char *service, *format;
-					dimBrowser.getServices("NA62/EOB/*");
+					dimBrowser.getServices("*EOB*");
 					while (dimBrowser.getNextService(service, format)) {
 						std::cout << "service found: " << service << "\t" << format << std::endl;
 
