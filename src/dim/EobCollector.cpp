@@ -33,10 +33,10 @@ EobDataHdr* EobCollector::getDataHdr(char* serviceName) {
 	void* data = dimInfo.getData();
 	uint dataLength = dimInfo.getSize();
 	if (dataLength < sizeof(EobDataHdr)) {
-		LOG(ERROR)<<"EOB Service "<<serviceName<<" does not contain enough data";
+		LOG(ERROR)<<"EOB Service "<<serviceName<<" does not contain enough data: Found only " << dataLength << " B while the data header already has " << sizeof(EobDataHdr) << " B";
 	} else {
 		EobDataHdr* hdr = (EobDataHdr*) data;
-		if(hdr->length != dataLength) {
+		if (hdr->length != dataLength) {
 			LOG(ERROR)<< "EOB Service "<<serviceName<<" does not contain enough data";
 		} else {
 			return (EobDataHdr*) data;
@@ -46,8 +46,7 @@ EobDataHdr* EobCollector::getDataHdr(char* serviceName) {
 }
 
 void EobCollector::run() {
-	std::mutex mutex;
-	dimListener_.registerEobListener([this, &mutex](uint eob) {
+	dimListener_.registerEobListener([this](uint eob) {
 		/*
 		 * This is executed after every eob update
 		 */
@@ -60,16 +59,16 @@ void EobCollector::run() {
 		/*
 		 * Start a thread that will sleep a while and read the EOB services afterwards
 		 */
-		boost::thread([this, &mutex, eob, burstID]() {
+		boost::thread([this, eob, burstID]() {
 					/*
 					 * Wait for the services to update the data
 					 */
 					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
 
-					std::lock_guard<std::mutex> lock(mutex);
+					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 					DimBrowser dimBrowser;
 					char *service, *format;
-					dimBrowser.getServices("*EOB*");
+					dimBrowser.getServices("NA62/EOB/*");
 					while (dimBrowser.getNextService(service, format)) {
 						std::cout << "service found: " << service << "\t" << format << std::endl;
 

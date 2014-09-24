@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <map>
 #include <vector>
+#include <mutex>
 
 namespace na62 {
 struct EVENT_HDR;
@@ -45,6 +46,8 @@ private:
 	 * If the data is corrupt (e.g. wrong length) nullptr will be returned
 	 */
 	EobDataHdr* getDataHdr(char* serviceName);
+
+	std::mutex eobCallbackMutex_;
 };
 
 }
