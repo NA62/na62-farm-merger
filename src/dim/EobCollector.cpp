@@ -7,7 +7,6 @@
 
 #include "EobCollector.h"
 
-#include <dim/dic.hxx>
 #include <iostream>
 #include <glog/logging.h>
 #include <boost/thread.hpp>
@@ -17,6 +16,7 @@
 #include <structs/Event.h>
 
 #include "../options/Options.h"
+#include "../utils/Utils.h"
 
 namespace na62 {
 namespace dim {
@@ -28,16 +28,19 @@ EobCollector::~EobCollector() {
 // TODO Auto-generated destructor stub
 }
 
-EobDataHdr* EobCollector::getDataHdr(char* serviceName) {
-	DimUpdatedInfo dimInfo(serviceName, -1);
-	void* data = dimInfo.getData();
-	uint dataLength = dimInfo.getSize();
+EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
+	char* data = dimInfo->getString();
+	uint dataLength = dimInfo->getSize();
+
 	if (dataLength < sizeof(EobDataHdr)) {
-		LOG(ERROR)<<"EOB Service "<<serviceName<<" does not contain enough data: Found only " << dataLength << " B while the data header already has " << sizeof(EobDataHdr) << " B";
+		LOG(ERROR)<<"EOB Service "<<dimInfo->getName()<<" does not contain enough data: Found only " <<
+		dataLength << " B but at least " << sizeof(EobDataHdr) <<
+		" B are needed to store the header ";
 	} else {
 		EobDataHdr* hdr = (EobDataHdr*) data;
-		if (hdr->length != dataLength) {
-			LOG(ERROR)<< "EOB Service "<<serviceName<<" does not contain enough data";
+		if (hdr->length*4 != dataLength) {
+			LOG(ERROR)<< "EOB Service "<<dimInfo->getName()<<" does not contain the right number of bytes: The header says " <<
+			hdr->length*4 << " but DIM stores " << dataLength;
 		} else {
 			return (EobDataHdr*) data;
 		}
@@ -61,21 +64,36 @@ void EobCollector::run() {
 		 */
 		boost::thread([this, eob, burstID]() {
 					/*
+					 * Update list of DimInfos within one mutex protected scope
+					 */
+					{	std::lock_guard<std::mutex> lock(eobCallbackMutex_);
+
+						DimBrowser dimBrowser;
+						char *service, *format;
+						dimBrowser.getServices("NA62/EOB/*");
+						while (dimBrowser.getNextService(service, format)) {
+							std::string serviceName(service);
+
+							if(eobInfoByName_.count(serviceName) == 0) {
+								LOG(INFO) << "New service found: " << serviceName << "\t" << format;
+								eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
+							}
+						}
+					}
+
+					/*
 					 * Wait for the services to update the data
 					 */
 					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
 
-					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
-					DimBrowser dimBrowser;
-					char *service, *format;
-					dimBrowser.getServices("NA62/EOB/*");
-					while (dimBrowser.getNextService(service, format)) {
-						std::cout << "service found: " << service << "\t" << format << std::endl;
-
-						EobDataHdr* hdr = getDataHdr(service);
+					for(auto serviceNameAndService: eobInfoByName_) {
+						EobDataHdr* hdr = getData(serviceNameAndService.second);
 						if (hdr != nullptr && hdr->eobTimestamp==eob) {
 							eobDataBySourceIDByBurstID[burstID][hdr->detectorID].push_back(hdr);
 						} else {
+							if( hdr != nullptr) {
+								LOG(ERROR) << "Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob;
+							}
 							delete hdr;
 						}
 					}

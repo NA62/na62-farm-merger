@@ -18,13 +18,16 @@ namespace na62 {
 struct EVENT_HDR;
 } /* namespace na62 */
 
+class DimInfo;
+
 namespace na62 {
 namespace dim {
 
 struct EobDataHdr {
-	u_int16_t length; // number of bytes including this header
+	u_int16_t length; // number of 32-bit words including this header
 	u_int8_t blockID;
 	u_int8_t detectorID;
+
 	u_int32_t eobTimestamp;
 }__attribute__ ((__packed__));
 
@@ -45,9 +48,11 @@ private:
 	 *
 	 * If the data is corrupt (e.g. wrong length) nullptr will be returned
 	 */
-	EobDataHdr* getDataHdr(char* serviceName);
+	EobDataHdr* getData(DimInfo* dimInfo);
 
 	std::mutex eobCallbackMutex_;
+
+	std::map <std::string, DimInfo*> eobInfoByName_;
 };
 
 }

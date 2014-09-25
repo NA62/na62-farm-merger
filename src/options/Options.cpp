@@ -74,7 +74,7 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	(OPTION_TIMEOUT, po::value<int>()->required(), "If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.")
 
-	(OPTION_EOB_COLLECTION_TIMEOUT, po::value<int>()->required(), "Wait this many ms after an EOB before reading the EOB services")
+	(OPTION_EOB_COLLECTION_TIMEOUT, po::value<int>()->default_value(500), "Wait this many ms after an EOB before reading the EOB services")
 
 	;
 
