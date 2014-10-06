@@ -116,11 +116,22 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		return nullptr;
 	}
 
+	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
+
+	EVENT_DATA_PTR* newEventPointerTable = new EVENT_DATA_PTR[event->numberOfDetectors];
+	memcpy(newEventPointerTable, sourceIdAndOffsets, event->numberOfDetectors);
+
 	/*
-	 * Calculate the new event length
+	 * Calculate the new event length by adding the lengths of all EOB-dim data
 	 */
-	for(auto& sourceIDAndhdrs: eobDataMap) {
-		for(auto hdr: sourceIDAndhdrs.second) {
+	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
+		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
+
+		/*
+		 * Sum all EOB-Dim data and add it to the eventBufferSize
+		 */
+		uint additionalBytesForThisSource = 0;
+		for(auto hdr: eobDataMap[sourceIdAndOffset.sourceID]) {
 			int subeventLength = hdr->length;
 			/*
 			 * 4 Byte alignment for every event
@@ -128,8 +139,16 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 			if (subeventLength % 4 != 0) {
 				subeventLength = subeventLength + (4-subeventLength % 4);
 			}
+			additionalBytesForThisSource+= subeventLength;
+		}
+		eventBufferSize += additionalBytesForThisSource;
 
-			eventBufferSize += subeventLength;
+		/*
+		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
+		 */
+		for(int followingSource=sourceNum; followingSource!=event->numberOfDetectors; followingSource++) {
+			EVENT_DATA_PTR sourceIdAndOffset = newEventPointerTable[sourceNum];
+			sourceIdAndOffset.offset+=additionalBytesForThisSource;
 		}
 	}
 
@@ -143,7 +162,6 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	uint oldEventPtr = 0;
 	uint newEventPtr = 0;
 
-	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
 	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
@@ -186,119 +204,14 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	 */
 	memcpy(eventBuffer+newEventPtr, event+oldEventPtr, event->length*4-oldEventPtr);
 
+	/*
+	 * Overwrite the pointer table with the corrected values
+	 */
+	memcpy(header->getDataPointer(), newEventPointerTable, header->numberOfDetectors );
+
 	delete[] event;
 
 	return header;
 }
-
-//EVENT_HDR* EobCollector::getEobEvent(uint burstID) {
-//	if (eobDataBySourceIDByBurstID.count(burstID) == 0) {
-//		LOG(ERROR)<<"Trying to write EOB data of burst " << burstID << " even though it does not exist";
-//		return nullptr;
-//	}
-//
-//	uint eventBufferSize = sizeof(EVENT_HDR);
-//
-//	auto eobDataVector = eobDataBySourceIDByBurstID[burstID];
-//
-//	if(eobDataVector.size()==0) {
-//		return nullptr;
-//	}
-//
-//	for(EobDataHdr* hdr: eobDataVector) {
-//		int subeventLength = hdr->length;
-//		/*
-//		 * 4 Byte alignment for every event
-//		 */
-//		if (subeventLength % 4 != 0) {
-//			subeventLength = subeventLength + (4-subeventLength % 4);
-//		}
-//
-//		eventBufferSize+=4/*pointer table*/+ subeventLength;
-//	}
-//
-//	eventBufferSize += sizeof(EVENT_TRAILER);
-//
-//	char* eventBuffer = new char[eventBufferSize];
-//
-//	struct EVENT_HDR* header = (struct EVENT_HDR*) eventBuffer;
-//
-//	header->eventNum = 0xFFFFFF;
-//	header->format = 0xFF;
-//	// header->length will be written later on
-//	header->burstID = burstID;
-//	header->timestamp = eobDataVector[0]->eobTimestamp;
-//	header->triggerWord = 0;
-//	header->reserved1 = 0;
-//	header->fineTime = 0;
-//	header->numberOfDetectors = eobDataVector.size();
-//	header->reserved2 = 0;
-//	header->processingID = 0;
-//	header->SOBtimestamp = 0;// Will be set by the merger
-//
-//	uint32_t sizeOfPointerTable = 4 * header->numberOfDetectors;
-//	uint32_t pointerTableOffset = sizeof(struct EVENT_HDR);
-//	uint32_t eventOffset = sizeof(struct EVENT_HDR) + sizeOfPointerTable;
-//
-//	for(EobDataHdr* hdr: eobDataVector) {
-//		uint32_t eventOffset32 = eventOffset / 4;
-//
-//		/*
-//		 * Put the sub-detector into the pointer table
-//		 */
-//		std::memcpy(eventBuffer + pointerTableOffset, &eventOffset32, 3);
-//		std::memset(eventBuffer + pointerTableOffset + 3, hdr->detectorID, 1);
-//		pointerTableOffset += 4;
-//
-//		/*
-//		 * Write the EOB data
-//		 */
-//		memcpy(eventBuffer + eventOffset ,
-//				((char*)hdr)+sizeof(EobDataHdr), hdr->length );
-//		eventOffset += hdr->length;
-//
-//		/*
-//		 * 32-bit alignment
-//		 */
-//		if (eventOffset % 4 != 0) {
-//			memset(eventBuffer + eventOffset, 0, eventOffset % 4);
-//			eventOffset += eventOffset % 4;
-//		}
-//
-//		delete[] hdr;
-//	}
-//
-//	/*
-//	 * Trailer
-//	 */
-//	EVENT_TRAILER* trailer = (EVENT_TRAILER*) (eventBuffer + eventOffset);
-//	trailer->eventNum = header->eventNum;
-//	trailer->reserved = 0;
-//
-//	const uint eventLength = eventOffset + 4/*trailer*/;
-//	header->length = eventLength / 4;
-//
-//	assert(eventBufferSize == eventLength);
-//
-//	/*
-//	 * Cleanup
-//	 */
-//	eobDataBySourceIDByBurstID.erase(burstID);
-//
-//	/*
-//	 * Remove old EOB data not written by this merger
-//	 */
-//	for(auto pair: eobDataBySourceIDByBurstID) {
-//		uint ts = pair.first;
-//		if(ts < burstID) {
-//			for(auto data: pair.second) {
-//				delete[] data;
-//			}
-//			eobDataBySourceIDByBurstID.erase(ts);
-//		}
-//	}
-//
-//	return header;
-//}
 }
 }

@@ -64,7 +64,7 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 
 	std::map<uint32_t, EVENT_HDR*> burst = eventsByIDByBurst[finishedBurstID];
 
-	EVENT_HDR* oldEobEvent = (--burst.end())->second;
+	EVENT_HDR* oldEobEvent = (--burst.end())->second; // Take the last event as EOB event
 	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
 
 	eventsByIDByBurst[finishedBurstID][oldEobEvent->eventNum] = eobEvent;
