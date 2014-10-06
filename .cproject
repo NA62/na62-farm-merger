@@ -58,6 +58,7 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="tcmalloc"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="zmq"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="glog"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="dim"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1035784052" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/na62-farm-lib-networking/Debug}&quot;"/>

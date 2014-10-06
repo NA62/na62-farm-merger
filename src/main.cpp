@@ -25,6 +25,7 @@
 #include "sockets/Server.hpp"
 
 using namespace na62::merger;
+using namespace na62;
 
 int main(int argc, char* argv[]) {
 	/*

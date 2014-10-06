@@ -8,11 +8,15 @@
 #ifndef MERGER_H_
 #define MERGER_H_
 
+#include <mutex>
+#include <stddef.h>
 #include <stdint.h>
-#include <iostream>
-#include <boost/thread.hpp>
+#include <map>
+#include <sstream>
+#include <string>
+#include <structs/Event.h>
 
-#include "../sockets/Event.hpp"
+#include "../dim/EobCollector.h"
 
 namespace na62 {
 namespace merger {
@@ -21,24 +25,22 @@ namespace merger {
 class Merger {
 public:
 	Merger();
-	void addPacket(EVENT* event);
+	void addPacket(EVENT_HDR* event);
 
-	void print() {
-		std::map<uint32_t, std::map<uint32_t, EVENT*> >::const_iterator itr;
-		for (itr = eventsByIDByBurst.begin(); itr != eventsByIDByBurst.end(); ++itr) {
-			std::map<uint32_t, EVENT*>::const_iterator itr2;
-			for (itr2 = (*itr).second.begin(); itr2 != (*itr).second.end(); ++itr2) {
-				std::cout << "Burst: " << (*itr).first << " EventKey: " << (*itr2).first << " EventNum: " << (*itr2).second->eventNum
-						<< " lengt: " << (*itr2).second->length * 4 << std::endl;
-			}
-		}
-	}
+//	void print() {
+//		for (auto pair1 : eventsByIDByBurst) {
+//			std::map<uint32_t, EVENT_HDR*>::const_iterator itr2;
+//			for (auto pair2 : pair1.second) {
+//				std::cout << "Burst: " << pair1.first << " EventKey: " << pair2.first << " EventNum: " << pair2.second->eventNum << " lengt: "
+//						<< pair2.second->length * 4 << std::endl;
+//			}
+//		}
+//	}
 
 	std::string getProgressStats() {
 		std::stringstream stream;
-		std::map<uint32_t, std::map<uint32_t, EVENT*> >::const_iterator itr;
-		for (itr = eventsByIDByBurst.begin(); itr != eventsByIDByBurst.end(); ++itr) {
-			stream << (*itr).first << ";" << (*itr).second.size() << ";";
+		for (auto pair : eventsByIDByBurst) {
+			stream << pair.first << ";" << pair.second.size() << ";";
 		}
 		return stream.str();
 	}
@@ -51,23 +53,24 @@ public:
 		nextBurstSOBtimestamp_ = SOBtimestamp;
 	}
 
-
 private:
 	void startBurstControlThread(uint32_t& burstID);
-	void saveBurst(std::map<uint32_t, EVENT*>& eventByID, uint32_t& burstID);
+	void saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID);
 	void writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength);
 	std::string generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
 
-	std::map<uint32_t, std::map<uint32_t, EVENT*> > eventsByIDByBurst;
+	dim::EobCollector eobCollector_;
+
+	std::map<uint32_t, std::map<uint32_t, EVENT_HDR*> > eventsByIDByBurst;
 	std::map<uint32_t, uint32_t> runNumberByBurst;
 	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;
 	uint32_t nextBurstSOBtimestamp_;
 
-	boost::mutex newBurstMutex;
-	boost::mutex eventMutex;
+	std::mutex newBurstMutex;
+	std::mutex eventMutex;
 };
 
 } /* namespace merger */

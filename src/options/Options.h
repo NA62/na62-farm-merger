@@ -51,6 +51,8 @@ namespace merger {
 
 #define OPTION_TIMEOUT (char*)"burstTimeout"
 
+#define OPTION_EOB_COLLECTION_TIMEOUT (char*)"eobCollectionTimeout"
+
 class Options {
 public:
 	static void PrintVM(boost::program_options::variables_map vm);
@@ -75,6 +77,8 @@ public:
 	static int RUN_NUMBER;
 
 	static int TIMEOUT;
+
+	static int EOB_COLLECTION_TIMEOUT;
 
 };
 } /* namespace merger */
