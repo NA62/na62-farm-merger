@@ -2,14 +2,16 @@
  * Merger.cpp
  *
  *  Created on: Jul 6, 2012
- *      Author: root
+ *      Author: Jonas Kunze <kunze.jonas@gmail.com>
  */
 
 #include <fstream>
 #include <iostream>
+#include <boost/thread/thread.hpp>
+#include <boost/filesystem.hpp>
+#include <structs/Event.h>
 
 #include "../options/Options.h"
-#include<boost/filesystem.hpp>
 
 #include "Merger.hpp"
 
@@ -18,11 +20,13 @@ namespace merger {
 
 Merger::Merger() :
 		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
+
+	eobCollector_.run();
 }
 
-void Merger::addPacket(EVENT* event) {
+void Merger::addPacket(EVENT_HDR* event) {
 	uint32_t burstID = event->burstID;
-	boost::lock_guard<boost::mutex> lock(eventMutex);
+	std::lock_guard < std::mutex > lock(eventMutex);
 	if (eventsByIDByBurst[burstID].size() == 0) {
 		/*
 		 * Only one thread will start the EOB checking thread
@@ -56,14 +60,20 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 }
 
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
-	boost::lock_guard<boost::mutex> lock(newBurstMutex);
+	std::lock_guard < std::mutex > lock(newBurstMutex);
 
-	std::map<uint32_t, EVENT*> burst = eventsByIDByBurst[finishedBurstID];
+	std::map<uint32_t, EVENT_HDR*> burst = eventsByIDByBurst[finishedBurstID];
+
+	EVENT_HDR* oldEobEvent = (--burst.end())->second;
+	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
+
+	eventsByIDByBurst[finishedBurstID][oldEobEvent->eventNum] = eobEvent;
+
 	saveBurst(burst, finishedBurstID);
 	eventsByIDByBurst.erase(finishedBurstID);
 }
 
-void Merger::saveBurst(std::map<uint32_t, EVENT*>& eventByID, uint32_t& burstID) {
+void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID) {
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
