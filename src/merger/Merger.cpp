@@ -27,7 +27,7 @@ Merger::Merger() :
 void Merger::addPacket(EVENT_HDR* event) {
 	uint32_t burstID = event->burstID;
 	std::lock_guard < std::mutex > lock(eventMutex);
-	if (eventsByIDByBurst[burstID].size() == 0) {
+	if (eventsByBurstByID[burstID].size() == 0) {
 		/*
 		 * Only one thread will start the EOB checking thread
 		 */
@@ -39,7 +39,7 @@ void Merger::addPacket(EVENT_HDR* event) {
 		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
 	event->SOBtimestamp = SOBtimestampByBurst[burstID];
-	eventsByIDByBurst[burstID][event->eventNum] = event;
+	eventsByBurstByID[burstID][event->eventNum] = event;
 
 }
 
@@ -52,25 +52,25 @@ void Merger::handle_newBurst(uint32_t newBurstID) {
 void Merger::startBurstControlThread(uint32_t& burstID) {
 	size_t lastEventNum = -1;
 	do {
-		lastEventNum = eventsByIDByBurst[burstID].size();
+		lastEventNum = eventsByBurstByID[burstID].size();
 		sleep(Options::TIMEOUT);
-	} while (eventsByIDByBurst[burstID].size() > lastEventNum);
-	std::cout << "Finishing burst " << burstID << " : " << eventsByIDByBurst[burstID].size() << " because of normal timeout." << std::endl;
+	} while (eventsByBurstByID[burstID].size() > lastEventNum);
+	std::cout << "Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout." << std::endl;
 	handle_burstFinished(burstID);
 }
 
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	std::lock_guard < std::mutex > lock(newBurstMutex);
 
-	std::map<uint32_t, EVENT_HDR*> burst = eventsByIDByBurst[finishedBurstID];
+	std::map<uint32_t, EVENT_HDR*> &burst = eventsByBurstByID[finishedBurstID];
 
 	EVENT_HDR* oldEobEvent = (--burst.end())->second; // Take the last event as EOB event
 	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
 
-	eventsByIDByBurst[finishedBurstID][oldEobEvent->eventNum] = eobEvent;
+	eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEvent;
 
 	saveBurst(burst, finishedBurstID);
-	eventsByIDByBurst.erase(finishedBurstID);
+	eventsByBurstByID.erase(finishedBurstID);
 }
 
 void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID) {

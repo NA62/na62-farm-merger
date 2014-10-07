@@ -39,7 +39,7 @@ public:
 
 	std::string getProgressStats() {
 		std::stringstream stream;
-		for (auto pair : eventsByIDByBurst) {
+		for (auto pair : eventsByBurstByID) {
 			stream << pair.first << ";" << pair.second.size() << ";";
 		}
 		return stream.str();
@@ -63,7 +63,7 @@ private:
 
 	dim::EobCollector eobCollector_;
 
-	std::map<uint32_t, std::map<uint32_t, EVENT_HDR*> > eventsByIDByBurst;
+	std::map<uint32_t, std::map<uint32_t, EVENT_HDR*> > eventsByBurstByID;
 	std::map<uint32_t, uint32_t> runNumberByBurst;
 	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;
