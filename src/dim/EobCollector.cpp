@@ -199,7 +199,6 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		 */
 		for(EobDataHdr* data: eobDataMap[sourceIdAndOffset.sourceID]) {
 			std::cout << "Writing EOB-Data from dim for sourceID " << (int)sourceIdAndOffset.sourceID << ": "<<std::endl;
-			Utils::PrintHex((u_char*)data, data->length*4);
 
 			newEventSize+=data->length*4;
 
@@ -224,8 +223,6 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	 * Overwrite the new length. It's already aligned to 32 bits as the EOB only stores 4-byte length words
 	 */
 	header->length = newEventSize/4;
-
-	Utils::PrintHex((u_char*)header, header->length*4);
 
 	delete[] event;
 
