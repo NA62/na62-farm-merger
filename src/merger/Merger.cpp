@@ -26,8 +26,19 @@ Merger::Merger() :
 
 void Merger::addPacket(EVENT_HDR* event) {
 	uint32_t burstID = event->burstID;
-	std::lock_guard < std::mutex > lock(eventMutex);
+	std::lock_guard<std::mutex> lock(eventMutex);
 	if (eventsByBurstByID[burstID].size() == 0) {
+		if (nextBurstSOBtimestamp_ == 0) {
+			/*
+			 * Give it another try (at startup it can take a while until we get the message from dim...
+			 */
+			usleep(1000);
+			if (nextBurstSOBtimestamp_ == 0) {
+				std::cerr << "Received event even though the SOB is not defined yet. Dropping data!" << std::endl;
+				delete[] event;
+				return;
+			}
+		}
 		dim::EobCollector::setCurrentBurstID(burstID);
 		/*
 		 * Only one thread will start the EOB checking thread
@@ -61,7 +72,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 }
 
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
-	std::lock_guard < std::mutex > lock(newBurstMutex);
+	std::lock_guard<std::mutex> lock(newBurstMutex);
 
 	std::map<uint32_t, EVENT_HDR*> &burst = eventsByBurstByID[finishedBurstID];
 
