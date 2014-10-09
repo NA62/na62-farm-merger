@@ -49,7 +49,7 @@ public:
 		currentRunNumber_ = newRunNumber;
 	}
 
-	void SetSOBtimestamp_(uint32_t SOBtimestamp) {
+	void SetSOBtimestamp(uint32_t SOBtimestamp) {
 		nextBurstSOBtimestamp_ = SOBtimestamp;
 	}
 

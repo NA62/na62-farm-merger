@@ -51,7 +51,7 @@ void CommandConnector::thread() {
 			}  else if (message.size() > 14 && message.substr(0, 14) == "sob_timestamp:") {
 				std::string timeStampString = message.substr(14, message.size() - 14);
 				uint32_t timestamp = atol(timeStampString.data());
-				merger_.SetSOBtimestamp_(timestamp);
+				merger_.SetSOBtimestamp(timestamp);
 			}
 		}
 	}
