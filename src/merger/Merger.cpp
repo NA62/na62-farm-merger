@@ -28,6 +28,7 @@ void Merger::addPacket(EVENT_HDR* event) {
 	uint32_t burstID = event->burstID;
 	std::lock_guard < std::mutex > lock(eventMutex);
 	if (eventsByBurstByID[burstID].size() == 0) {
+		dim::EobCollector::setCurrentBurstID(burstID);
 		/*
 		 * Only one thread will start the EOB checking thread
 		 */

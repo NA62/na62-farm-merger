@@ -20,6 +20,9 @@
 
 namespace na62 {
 namespace dim {
+
+uint EobCollector::currentBurstID_ = 0;
+
 EobCollector::EobCollector() {
 
 }
@@ -58,12 +61,10 @@ void EobCollector::run() {
 					return;
 				}
 
-				uint burstID = dimListener_.getBurstNumber();
-
 				/*
 				 * Start a thread that will sleep a while and read the EOB services afterwards
 				 */
-				boost::thread([this, eob, burstID]() {
+				boost::thread([this, eob]() {
 							/*
 							 * Update list of DimInfos within one mutex protected scope
 							 */
@@ -92,8 +93,8 @@ void EobCollector::run() {
 							for(auto serviceNameAndService: eobInfoByName_) {
 								EobDataHdr* hdr = getData(serviceNameAndService.second);
 								if (hdr != nullptr && hdr->eobTimestamp==eob) {
-									LOG(INFO) << "Storing data of service " << serviceNameAndService.second->getName() << " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID << " for burst " << burstID;
-									eobDataByBurstIDBySourceID[burstID][hdr->detectorID].push_back(hdr);
+									LOG(INFO) << "Storing data of service " << serviceNameAndService.second->getName() << " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID << " for burst " << currentBurstID_;
+									eobDataByBurstIDBySourceID[currentBurstID_][hdr->detectorID].push_back(hdr);
 								} else {
 									if( hdr != nullptr) {
 										LOG(ERROR) << "Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob;
