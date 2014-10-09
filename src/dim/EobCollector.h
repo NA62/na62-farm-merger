@@ -43,6 +43,11 @@ public:
 	 * event will be deleted in this method if any EOB data was found. You should therefore exchange event with the returned pointer.
 	 */
 	EVENT_HDR* addEobDataToEvent(EVENT_HDR* event);
+
+	static void setCurrentBurstID(uint burstID) {
+		currentBurstID_ = burstID;
+	}
+
 private:
 	DimListener dimListener_;
 	std::map<uint, std::map<uint8_t, std::vector<EobDataHdr*>>>eobDataByBurstIDBySourceID;
@@ -57,6 +62,12 @@ private:
 	std::mutex eobCallbackMutex_;
 
 	std::map <std::string, DimInfo*> eobInfoByName_;
+
+	/*
+	 * Stores the current Burst ID which we'll get from incoming events instead of dim
+	 * as the dim burstID does not change while the run control isn't runnings
+	 */
+	static uint currentBurstID_;
 };
 
 }
