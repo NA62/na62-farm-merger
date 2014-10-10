@@ -12,7 +12,7 @@
 #include <boost/thread.hpp>
 #include <thread>
 #include <mutex>
-
+#include <zmq.hpp>
 #include <structs/Event.h>
 
 #include "../options/Options.h"
@@ -113,10 +113,12 @@ void EobCollector::run() {
 			});
 }
 
-EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
+zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
+	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
+
 	if (eobDataByBurstIDBySourceID.count(event->burstID) == 0) {
 		LOG(ERROR)<<"Trying to write EOB data of burst " << event->burstID << " even though it does not exist";
-		return event;
+		return eventMessage;
 	}
 
 	/*
@@ -130,7 +132,7 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	auto eobDataMap = eobDataByBurstIDBySourceID[event->burstID];
 
 	if(eobDataMap.size()==0) {
-		return event;
+		return eventMessage;
 	}
 
 	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
@@ -166,10 +168,11 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	 * Check if any dim-EOB data was found
 	 */
 	if(maxEventBufferSize == event->length*4) {
-		return event;
+		return eventMessage;
 	}
 
-	char* eventBuffer = new char[maxEventBufferSize];
+	zmq::message_t* newEventMessage = new zmq::message_t(maxEventBufferSize);
+	char* eventBuffer = (char*)newEventMessage->data();
 	struct EVENT_HDR* header = (struct EVENT_HDR*) eventBuffer;
 
 	uint oldEventPtr = 0;
@@ -231,9 +234,8 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	 */
 	header->length = newEventSize/4;
 
-	delete[] event;
-
-	return header;
+	delete eventMessage;
+	return newEventMessage;
 }
 }
 }
