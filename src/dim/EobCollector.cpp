@@ -90,6 +90,12 @@ void EobCollector::run() {
 
 							std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 
+							// Delete old data
+							eobDataByBurstIDBySourceID.erase(currentBurstID_);
+
+							/*
+							 * Store data of all services
+							 */
 							for(auto serviceNameAndService: eobInfoByName_) {
 								EobDataHdr* hdr = getData(serviceNameAndService.second);
 								if (hdr != nullptr && hdr->eobTimestamp==eob) {
@@ -199,7 +205,7 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
 		for(EobDataHdr* data: eobDataMap[sourceIdAndOffset.sourceID]) {
-			std::cout << "Writing EOB-Data from dim for sourceID " << (int)sourceIdAndOffset.sourceID << ": "<<std::endl;
+			std::cout << "Writing EOB-Data from dim for sourceID " << (int)sourceIdAndOffset.sourceID <<std::endl;
 
 			newEventSize+=data->length*4;
 
