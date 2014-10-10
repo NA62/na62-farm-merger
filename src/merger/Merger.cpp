@@ -102,15 +102,13 @@ void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burs
 	if (boost::filesystem::exists(filePath)) {
 		std::cerr << "File already exists: " << filePath << std::endl;
 		int counter = 2;
-		std::string tmpName;
-		tmpName = generateFileName(runNumber, burstID, counter);
-		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" + tmpName)) {
-			std::cerr << "File already exists: " << tmpName << std::endl;
-			tmpName = generateFileName(runNumber, burstID, ++counter);
+		fileName = generateFileName(runNumber, burstID, counter);
+		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" + fileName)) {
+			std::cerr << "File already exists: " << fileName << std::endl;
+			fileName = generateFileName(runNumber, burstID, ++counter);
 		}
 
-		std::cerr << "Instead writing file: " << tmpName << std::endl;
-		fileName = std::move(tmpName);
+		std::cerr << "Instead writing file: " << fileName << std::endl;
 		filePath = Options::STORAGE_DIR + "/" + fileName;
 	}
 
