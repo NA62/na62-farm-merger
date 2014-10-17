@@ -24,7 +24,8 @@ Merger::Merger() :
 	eobCollector_.run();
 }
 
-void Merger::addPacket(EVENT_HDR* event) {
+void Merger::addPacket(zmq::message_t* eventMessage) {
+	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 	uint32_t burstID = event->burstID;
 	std::lock_guard<std::mutex> lock(eventMutex);
 	if (eventsByBurstByID[burstID].size() == 0) {
@@ -35,7 +36,7 @@ void Merger::addPacket(EVENT_HDR* event) {
 			usleep(1000);
 			if (nextBurstSOBtimestamp_ == 0) {
 				std::cerr << "Received event even though the SOB is not defined yet. Dropping data!" << std::endl;
-				delete[] event;
+				delete eventMessage;
 				return;
 			}
 		}
@@ -51,7 +52,7 @@ void Merger::addPacket(EVENT_HDR* event) {
 		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
 	event->SOBtimestamp = SOBtimestampByBurst[burstID];
-	eventsByBurstByID[burstID][event->eventNum] = event;
+	eventsByBurstByID[burstID][event->eventNum] = eventMessage;
 
 }
 
@@ -74,18 +75,20 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	std::lock_guard<std::mutex> lock(newBurstMutex);
 
-	std::map<uint32_t, EVENT_HDR*> &burst = eventsByBurstByID[finishedBurstID];
+	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
 
-	EVENT_HDR* oldEobEvent = (--burst.end())->second; // Take the last event as EOB event
-	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
+	zmq::message_t* oldEobEvent = (--burst.end())->second; // Take the last event as EOB event
 
-	eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEvent;
+	zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEvent);
+	EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+
+	eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
 
 	saveBurst(burst, finishedBurstID);
 	eventsByBurstByID.erase(finishedBurstID);
 }
 
-void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID) {
+void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID) {
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
@@ -122,10 +125,10 @@ void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burs
 
 	size_t bytes = 0;
 	for (auto pair : eventByID) {
-		myfile.write((char*) pair.second, pair.second->length * 4);
-		bytes += pair.second->length * 4;
+		myfile.write((char*) pair.second->data(), pair.second->size() * 4);
+		bytes += pair.second->size() * 4;
 
-		delete[] pair.second;
+		delete pair.second;
 	}
 	myfile.close();
 	system(std::string("chown na62cdr:vl " + filePath).data());

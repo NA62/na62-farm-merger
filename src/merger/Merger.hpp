@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <map>
+#include <zmq.hpp>
 #include <sstream>
 #include <string>
 #include <structs/Event.h>
@@ -25,7 +26,7 @@ namespace merger {
 class Merger {
 public:
 	Merger();
-	void addPacket(EVENT_HDR* event);
+	void addPacket(zmq::message_t* eventMessage);
 
 //	void print() {
 //		for (auto pair1 : eventsByIDByBurst) {
@@ -55,7 +56,7 @@ public:
 
 private:
 	void startBurstControlThread(uint32_t& burstID);
-	void saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID);
+	void saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID);
 	void writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength);
 	std::string generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
 	void handle_newBurst(uint32_t newBurstID);
@@ -63,7 +64,7 @@ private:
 
 	dim::EobCollector eobCollector_;
 
-	std::map<uint32_t, std::map<uint32_t, EVENT_HDR*> > eventsByBurstByID;
+	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
 	std::map<uint32_t, uint32_t> runNumberByBurst;
 	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;

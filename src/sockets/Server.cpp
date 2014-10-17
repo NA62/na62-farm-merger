@@ -31,19 +31,20 @@ void Server::thread() {
 
 	while (true) {
 		//  Wait for next request from client
-		zmq::message_t eventMessage;
-		socket.recv(&eventMessage);
-		EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(new char[eventMessage.size()]);
+		zmq::message_t* eventMessage = new zmq::message_t();
+		socket.recv(eventMessage);
+		EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 
 		/*
 		 * TODO: do we really have to memcpy here?
 		 */
-		memcpy(event, eventMessage.data(), eventMessage.size());
+//		memcpy(event, eventMessage.data(), eventMessage.size());
 
-		if (eventMessage.size() == event->length * 4) {
-			merger_.addPacket(event);
+		if (eventMessage->size() == event->length * 4) {
+			merger_.addPacket(eventMessage);
 		} else {
-			std::cerr << "Received " << eventMessage.size() << " Bytes with an event of length " << (event->length * 4) << std::endl;
+			std::cerr << "Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) << std::endl;
+			delete eventMessage;
 		}
 	}
 }
