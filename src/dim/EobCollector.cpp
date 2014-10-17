@@ -208,11 +208,10 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 
 			memcpy(eventBuffer + newEventPtr, data, data->length * 4);
 			numberOfBytesAdded += data->length * 4;
+			newEventPtr += data->length * 4;
 			delete data;
 		}
 		eobDataMap.erase(sourceIdAndOffset.sourceID);
-
-		newEventPtr += numberOfBytesAdded;
 
 		/*
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
