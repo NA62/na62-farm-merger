@@ -200,14 +200,14 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		/*
 		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
-		uint numberOfBytesAdded = 0;
+		uint numberOfWordsAdded = 0;
 		for (EobDataHdr* data : eobDataMap[sourceIdAndOffset.sourceID]) {
 			std::cout << "Writing EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID << std::endl;
 
 			newEventSize += data->length * 4;
 
 			memcpy(eventBuffer + newEventPtr, data, data->length * 4);
-			numberOfBytesAdded += data->length * 4;
+			numberOfWordsAdded += data->length;
 			newEventPtr += data->length * 4;
 			delete data;
 		}
@@ -217,7 +217,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
 		 */
 		for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
-			newEventPointerTable[sourceNum].offset += numberOfBytesAdded;
+			newEventPointerTable[sourceNum].offset += numberOfWordsAdded;
 		}
 	}
 
