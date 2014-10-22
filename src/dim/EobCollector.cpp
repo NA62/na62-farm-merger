@@ -174,7 +174,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		/*
 		 * Search for a sourceID of which we have dim-eob data
 		 */
-		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0) {
+		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0 || eobDataMap[sourceIdAndOffset.sourceID].size() == 0) {
 			continue;
 		}
 
@@ -217,7 +217,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
 		 */
 		for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
-			newEventPointerTable[sourceNum].offset += numberOfWordsAdded;
+			newEventPointerTable[followingSource].offset += numberOfWordsAdded;
 		}
 	}
 
