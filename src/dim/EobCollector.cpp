@@ -156,8 +156,8 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		/*
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
 		 */
-		for(int followingSource=sourceNum; followingSource!=event->numberOfDetectors; followingSource++) {
-			EVENT_DATA_PTR sourceIdAndOffset = newEventPointerTable[sourceNum];
+		for(int followingSource=sourceNum+1; followingSource!=event->numberOfDetectors; followingSource++) {
+			EVENT_DATA_PTR sourceIdAndOffset = newEventPointerTable[followingSource];
 			sourceIdAndOffset.offset+=additionalWordsForThisSource;
 		}
 	}
