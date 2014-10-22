@@ -52,65 +52,64 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 }
 
 void EobCollector::run() {
-	dimListener_.registerEobListener(
-			[this](uint eob) {
-				/*
-				 * This is executed after every eob update
-				 */
-				if(eob==0) {
-					return;
+	dimListener_.registerEobListener([this](uint eob) {
+		/*
+		 * This is executed after every eob update
+		 */
+		if(eob==0) {
+			return;
+		}
+
+		/*
+		 * Start a thread that will sleep a while and read the EOB services afterwards
+		 */
+		boost::thread([this, eob]() {
+					/*
+					 * Update list of DimInfos within one mutex protected scope
+					 */
+					{	std::lock_guard<std::mutex> lock(eobCallbackMutex_);
+
+						DimBrowser dimBrowser;
+						char *service, *format;
+						dimBrowser.getServices("NA62/EOB/*");
+						while (dimBrowser.getNextService(service, format)) {
+							std::string serviceName(service);
+
+							if(eobInfoByName_.count(serviceName) == 0) {
+								LOG(INFO) << "New service found: " << serviceName << "\t" << format;
+								eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
+							}
+						}
+					}
+
+					/*
+					 * Wait for the services to update the data
+					 */
+					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
+
+					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
+
+					// Delete old data
+			eobDataByBurstIDBySourceID.erase(currentBurstID_);
+
+			/*
+			 * Store data of all services
+			 */
+			for(auto serviceNameAndService: eobInfoByName_) {
+				EobDataHdr* hdr = getData(serviceNameAndService.second);
+				if (hdr != nullptr && hdr->eobTimestamp==eob) {
+					LOG(INFO) << "Storing data of service " << serviceNameAndService.second->getName() << " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID << " for burst " << currentBurstID_;
+					eobDataByBurstIDBySourceID[currentBurstID_][hdr->detectorID].push_back(hdr);
+				} else {
+					if( hdr != nullptr) {
+						LOG(ERROR) << "Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob;
+					}
+					delete hdr;
 				}
+			}
+		});
 
-				/*
-				 * Start a thread that will sleep a while and read the EOB services afterwards
-				 */
-				boost::thread([this, eob]() {
-							/*
-							 * Update list of DimInfos within one mutex protected scope
-							 */
-							{	std::lock_guard<std::mutex> lock(eobCallbackMutex_);
-
-								DimBrowser dimBrowser;
-								char *service, *format;
-								dimBrowser.getServices("NA62/EOB/*");
-								while (dimBrowser.getNextService(service, format)) {
-									std::string serviceName(service);
-
-									if(eobInfoByName_.count(serviceName) == 0) {
-										LOG(INFO) << "New service found: " << serviceName << "\t" << format;
-										eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
-									}
-								}
-							}
-
-							/*
-							 * Wait for the services to update the data
-							 */
-							usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
-
-							std::lock_guard<std::mutex> lock(eobCallbackMutex_);
-
-							// Delete old data
-							eobDataByBurstIDBySourceID.erase(currentBurstID_);
-
-							/*
-							 * Store data of all services
-							 */
-							for(auto serviceNameAndService: eobInfoByName_) {
-								EobDataHdr* hdr = getData(serviceNameAndService.second);
-								if (hdr != nullptr && hdr->eobTimestamp==eob) {
-									LOG(INFO) << "Storing data of service " << serviceNameAndService.second->getName() << " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID << " for burst " << currentBurstID_;
-									eobDataByBurstIDBySourceID[currentBurstID_][hdr->detectorID].push_back(hdr);
-								} else {
-									if( hdr != nullptr) {
-										LOG(ERROR) << "Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob;
-									}
-									delete hdr;
-								}
-							}
-						});
-
-			});
+});
 }
 
 EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
@@ -136,7 +135,7 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
 
 	EVENT_DATA_PTR* newEventPointerTable = new EVENT_DATA_PTR[event->numberOfDetectors];
-	memcpy(newEventPointerTable, sourceIdAndOffsets, event->numberOfDetectors);
+	memcpy(newEventPointerTable, sourceIdAndOffsets, event->numberOfDetectors * sizeof(EVENT_DATA_PTR));
 
 	/*
 	 * Calculate the new event length by adding the lengths of all EOB-dim data
@@ -157,8 +156,8 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
 		 */
 		for(int followingSource=sourceNum+1; followingSource!=event->numberOfDetectors; followingSource++) {
-			EVENT_DATA_PTR sourceIdAndOffset = newEventPointerTable[followingSource];
-			sourceIdAndOffset.offset+=additionalWordsForThisSource;
+			EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
+			sourceIdAndOffset.offset += additionalWordsForThisSource;
 		}
 	}
 
