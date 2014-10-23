@@ -223,7 +223,7 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	/*
 	 * Overwrite the pointer table with the corrected values
 	 */
-	memcpy(header->getDataPointer(), newEventPointerTable, header->numberOfDetectors );
+	memcpy(header->getDataPointer(), newEventPointerTable, header->numberOfDetectors*sizeof(EVENT_DATA_PTR) );
 
 	/*
 	 * Overwrite the new length. It's already aligned to 32 bits as the EOB only stores 4-byte length words
