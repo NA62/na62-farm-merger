@@ -22,7 +22,6 @@
 #include "dim/MonitorConnector.h"
 #include "merger/Merger.hpp"
 #include "options/Options.h"
-#include "sockets/Server.hpp"
 
 using namespace na62::merger;
 using namespace na62;
@@ -42,13 +41,8 @@ int main(int argc, char* argv[]) {
 	CommandConnector commands(merger);
 	commands.startThread();
 
-	/*
-	 * Open the tcp socket for the farm servers and an interior ipc socket to distribute the incoming data to the workers
-	 */
 	zmq::context_t context(1);
-
 	zmq::socket_t frontEnd(context, ZMQ_PULL);
-	zmq::socket_t backEnd(context, ZMQ_PUSH);
 
 	std::stringstream bindURI;
 	bindURI << "tcp://*:" << Options::LISTEN_PORT;
@@ -59,24 +53,21 @@ int main(int argc, char* argv[]) {
 	int highWaterMark = 10000000;
 	frontEnd.setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
 
-	backEnd.bind(SERVER_ADDR);
-
-	/*
-	 * Launch the worker threads
-	 */
-	std::vector<Server*> servers;
-	uint numberOfThreads = Options::THREAD_NUM;
-	if (numberOfThreads == 0) {
-		numberOfThreads = std::thread::hardware_concurrency();
-	}
-	for (uint threadNum = 0; numberOfThreads != threadNum; threadNum++) {
-		servers.push_back(new Server(merger, &context));
-		servers[threadNum]->startThread(threadNum, -1, 15);
-	}
-
 	monitor.updateState(na62::STATE::RUNNING);
 
-	zmq::proxy(frontEnd, backEnd, NULL);
+
+	while (true) {
+		//  Wait for next request from client
+		zmq::message_t* eventMessage = new zmq::message_t();
+		frontEnd.recv(eventMessage);
+		EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
+
+		if (eventMessage->size() == event->length * 4) {
+			merger.addPacket(eventMessage);
+		} else {
+			std::cerr << "Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) << std::endl;
+		}
+	}
 
 	return EXIT_SUCCESS;
 }

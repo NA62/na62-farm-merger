@@ -27,6 +27,7 @@ int Options::MERGER_ID;
 int Options::RUN_NUMBER;
 int Options::TIMEOUT;
 int Options::EOB_COLLECTION_TIMEOUT;
+bool Options::APPEND_DIM_EOB;
 
 void Options::PrintVM(po::variables_map vm) {
 	using namespace po;
@@ -70,11 +71,14 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	(OPTION_MERGER_ID, po::value<int>()->required(), "Identifier of this merger. This will be the first number of the created files.")
 
-	(OPTION_RUN_NUMBER, po::value<int>()->required(), "Current run number (will be updated via dim)")
+	(OPTION_RUN_NUMBER, po::value<int>()->default_value(0),
+			"Current run number (will be updated via dim). Set to 0 if you want to wait for the dim info before starting")
 
 	(OPTION_TIMEOUT, po::value<int>()->required(), "If we didn't receive <burstTimeout> seconds any event from one burst the file will be written.")
 
 	(OPTION_EOB_COLLECTION_TIMEOUT, po::value<int>()->default_value(500), "Wait this many ms after an EOB before reading the EOB services")
+
+	(OPTION_APPEND_DIM_EOB, po::value<int>()->default_value(1), "Set to 0 if no dim EOB data should be appended to the EOB events")
 
 	;
 
@@ -122,7 +126,9 @@ void Options::Initialize(int argc, char* argv[]) {
 
 	TIMEOUT = vm[OPTION_TIMEOUT ].as<int>();
 
-	EOB_COLLECTION_TIMEOUT = vm[OPTION_EOB_COLLECTION_TIMEOUT].as<int>();
+	EOB_COLLECTION_TIMEOUT = vm[OPTION_EOB_COLLECTION_TIMEOUT ].as<int>();
+
+	APPEND_DIM_EOB = vm[OPTION_APPEND_DIM_EOB ].as<int>();
 }
 } /* namespace merger */
 } /* namespace na62 */

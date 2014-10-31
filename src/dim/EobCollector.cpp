@@ -112,24 +112,25 @@ void EobCollector::run() {
 });
 }
 
-EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
+zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
+	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 	if (eobDataByBurstIDBySourceID.count(event->burstID) == 0) {
 		LOG(ERROR)<<"Trying to write EOB data of burst " << event->burstID << " even though it does not exist";
-		return event;
+		return eventMessage;
 	}
 
 	/*
 	 * The new event will have the following number of Bytes if all sources are active and therefore all dim data will be added to the event
 	 */
-	uint maxEventBufferSize = event->length*4;
+	uint newEventBufferSize = event->length * 4;
 
 	// The actual new size will be stored here
-	uint newEventSize = maxEventBufferSize;
+	uint newEventSize = newEventBufferSize;
 
 	auto eobDataMap = eobDataByBurstIDBySourceID[event->burstID];
 
-	if(eobDataMap.size()==0) {
-		return event;
+	if (eobDataMap.size() == 0) {
+		return eventMessage;
 	}
 
 	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
@@ -140,22 +141,26 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	/*
 	 * Calculate the new event length by adding the lengths of all EOB-dim data
 	 */
-	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
+	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
+
+		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0) {
+			continue;
+		}
 
 		/*
 		 * Sum all EOB-Dim data and add it to the eventBufferSize
 		 */
 		uint additionalWordsForThisSource = 0;
-		for(auto hdr: eobDataMap[sourceIdAndOffset.sourceID]) {
-			additionalWordsForThisSource+= hdr->length;
+		for (auto hdr : eobDataMap[sourceIdAndOffset.sourceID]) {
+			additionalWordsForThisSource += hdr->length;
 		}
-		maxEventBufferSize += additionalWordsForThisSource*4;
+		newEventBufferSize += additionalWordsForThisSource * 4;
 
 		/*
 		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
 		 */
-		for(int followingSource=sourceNum+1; followingSource!=event->numberOfDetectors; followingSource++) {
+		for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
 			EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
 			sourceIdAndOffset.offset += additionalWordsForThisSource;
 		}
@@ -164,52 +169,54 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	/*
 	 * Check if any dim-EOB data was found
 	 */
-	if(maxEventBufferSize == event->length*4) {
-		return event;
+	if (newEventBufferSize == event->length * 4) {
+		return eventMessage;
 	}
 
-	char* eventBuffer = new char[maxEventBufferSize];
-	struct EVENT_HDR* header = (struct EVENT_HDR*) eventBuffer;
+	zmq::message_t* newEventMessage = new zmq::message_t(newEventBufferSize);
+	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage->data();
+	char* eventBuffer = reinterpret_cast<char*>(newEventMessage->data());
 
 	uint oldEventPtr = 0;
 	uint newEventPtr = 0;
 
-	for(int sourceNum=0; sourceNum!=event->numberOfDetectors; sourceNum++) {
+	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
+
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-		if(eobDataMap.count(sourceIdAndOffset.sourceID)==0) {
+		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0) {
 			continue;
 		}
 
 		uint bytesToCopyFromOldEvent = 0;
-		if(sourceNum!=event->numberOfDetectors-1) {
-			EVENT_DATA_PTR nextSourceIdAndOffset = sourceIdAndOffsets[sourceNum+1];
+		if (sourceNum != event->numberOfDetectors - 1) {
+			EVENT_DATA_PTR nextSourceIdAndOffset = sourceIdAndOffsets[sourceNum + 1];
 
 			/*
 			 * Copy original event
 			 */
-			bytesToCopyFromOldEvent = nextSourceIdAndOffset.offset*4-oldEventPtr;
+			bytesToCopyFromOldEvent = nextSourceIdAndOffset.offset * 4 - oldEventPtr;
 		} else {
 			/*
 			 * The last fragment goes from oldEventPtr to the trailer
 			 */
-			bytesToCopyFromOldEvent = (event->length*4-sizeof(EVENT_TRAILER))-oldEventPtr;
+			bytesToCopyFromOldEvent = (event->length * 4 - sizeof(EVENT_TRAILER)) - oldEventPtr;
 		}
 
-		memcpy(eventBuffer+newEventPtr, ((char*)event)+oldEventPtr, bytesToCopyFromOldEvent);
+		memcpy(eventBuffer + newEventPtr, ((char*) event) + oldEventPtr, bytesToCopyFromOldEvent);
 		oldEventPtr += bytesToCopyFromOldEvent;
 		newEventPtr += bytesToCopyFromOldEvent;
 
 		/*
 		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
-		for(EobDataHdr* data: eobDataMap[sourceIdAndOffset.sourceID]) {
-			std::cout << "Writing EOB-Data from dim for sourceID " << (int)sourceIdAndOffset.sourceID <<std::endl;
+		for (EobDataHdr* data : eobDataMap[sourceIdAndOffset.sourceID]) {
+			std::cout << "Writing EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID << std::endl;
 
-			newEventSize+=data->length*4;
+			newEventSize += data->length * 4;
 
-			memcpy(eventBuffer+newEventPtr, data, data->length*4);
-			newEventPtr+=data->length*4;
+			memcpy(eventBuffer + newEventPtr, data, data->length * 4);
+			newEventPtr += data->length * 4;
 			delete data;
 		}
 		eobDataMap.erase(sourceIdAndOffset.sourceID);
@@ -218,21 +225,21 @@ EVENT_HDR* EobCollector::addEobDataToEvent(EVENT_HDR* event) {
 	/*
 	 * Copy the rest including the trailer (or only the trailer if the last fragment has EOB data
 	 */
-	memcpy(eventBuffer+newEventPtr, ((char*)event)+oldEventPtr, event->length*4-oldEventPtr);
+	memcpy(eventBuffer + newEventPtr, ((char*) event) + oldEventPtr, event->length * 4 - oldEventPtr);
 
 	/*
 	 * Overwrite the pointer table with the corrected values
 	 */
-	memcpy(header->getDataPointer(), newEventPointerTable, header->numberOfDetectors*sizeof(EVENT_DATA_PTR) );
+	memcpy(header->getDataPointer(), newEventPointerTable, header->numberOfDetectors * sizeof(EVENT_DATA_PTR));
 
 	/*
 	 * Overwrite the new length. It's already aligned to 32 bits as the EOB only stores 4-byte length words
 	 */
-	header->length = newEventSize/4;
+	header->length = newEventSize / 4;
 
-	delete[] event;
+	delete eventMessage;
 
-	return header;
+	return newEventMessage;
 }
 }
 }

@@ -13,6 +13,7 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include <zmq.hpp>
 
 namespace na62 {
 struct EVENT_HDR;
@@ -42,7 +43,7 @@ public:
 	 * Writes the EOB data from dim to the end of every detector block in the event.
 	 * event will be deleted in this method if any EOB data was found. You should therefore exchange event with the returned pointer.
 	 */
-	EVENT_HDR* addEobDataToEvent(EVENT_HDR* event);
+	zmq::message_t* addEobDataToEvent(zmq::message_t* event);
 
 	static void setCurrentBurstID(uint burstID) {
 		currentBurstID_ = burstID;
