@@ -53,6 +53,8 @@ namespace merger {
 
 #define OPTION_EOB_COLLECTION_TIMEOUT (char*)"eobCollectionTimeout"
 
+#define OPTION_APPEND_DIM_EOB (char*)"appendDimEob"
+
 class Options {
 public:
 	static void PrintVM(boost::program_options::variables_map vm);
@@ -79,6 +81,8 @@ public:
 	static int TIMEOUT;
 
 	static int EOB_COLLECTION_TIMEOUT;
+
+	static bool APPEND_DIM_EOB;
 
 };
 } /* namespace merger */

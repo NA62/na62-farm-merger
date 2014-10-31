@@ -10,6 +10,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/filesystem.hpp>
 #include <structs/Event.h>
+#include <pwd.h>
 
 #include "../options/Options.h"
 
@@ -19,23 +20,36 @@ namespace na62 {
 namespace merger {
 
 Merger::Merger() :
-		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0) {
+		currentRunNumber_(Options::RUN_NUMBER), nextBurstSOBtimestamp_(0), storageDir_(Options::STORAGE_DIR + "/") {
 
 	eobCollector_.run();
+
+	struct passwd *pwd = getpwnam("na62cdr"); /* don't free, see getpwnam() for details */
+	ownerID_ = pwd->pw_uid;
+	groupID_ = pwd->pw_gid;
+
 }
 
-void Merger::addPacket(EVENT_HDR* event) {
+void Merger::addPacket(zmq::message_t* eventMessage) {
+	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
+
+	if (currentRunNumber_ == 0) {
+		std::cout << "Run number not yet set -> Dropping incoming events" << std::endl;
+		delete eventMessage;
+		return;
+	}
+
 	uint32_t burstID = event->burstID;
 	std::lock_guard<std::mutex> lock(eventMutex);
 	if (eventsByBurstByID[burstID].size() == 0) {
-		if (nextBurstSOBtimestamp_ == 0) {
+		if (nextBurstSOBtimestamp_ == 0) { // didn't receive nextBurstID yet
 			/*
 			 * Give it another try (at startup it can take a while until we get the message from dim...
 			 */
 			usleep(1000);
 			if (nextBurstSOBtimestamp_ == 0) {
 				std::cerr << "Received event even though the SOB is not defined yet. Dropping data!" << std::endl;
-				delete[] event;
+				delete eventMessage;
 				return;
 			}
 		}
@@ -51,7 +65,7 @@ void Merger::addPacket(EVENT_HDR* event) {
 		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
 	event->SOBtimestamp = SOBtimestampByBurst[burstID];
-	eventsByBurstByID[burstID][event->eventNum] = event;
+	eventsByBurstByID[burstID][event->eventNum] = eventMessage;
 
 }
 
@@ -74,23 +88,27 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	std::lock_guard<std::mutex> lock(newBurstMutex);
 
-	std::map<uint32_t, EVENT_HDR*> &burst = eventsByBurstByID[finishedBurstID];
+	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
 
-	EVENT_HDR* oldEobEvent = (--burst.end())->second; // Take the last event as EOB event
-	EVENT_HDR* eobEvent = eobCollector_.addEobDataToEvent(oldEobEvent);
+	if (Options::APPEND_DIM_EOB) {
+		zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
+		zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
 
-	eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEvent;
+		EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+
+		eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+	}
 
 	saveBurst(burst, finishedBurstID);
 	eventsByBurstByID.erase(finishedBurstID);
 }
 
-void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burstID) {
+void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID) {
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
 	std::string fileName = generateFileName(runNumber, burstID, 0);
-	std::string filePath = Options::STORAGE_DIR + "/" + fileName;
+	std::string filePath = storageDir_ + fileName;
 	std::cout << "Writing file " << filePath << std::endl;
 
 	int numberOfEvents = eventByID.size();
@@ -103,13 +121,16 @@ void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burs
 		std::cerr << "File already exists: " << filePath << std::endl;
 		int counter = 2;
 		fileName = generateFileName(runNumber, burstID, counter);
-		while (boost::filesystem::exists(Options::STORAGE_DIR + "/" + fileName)) {
+
+		std::cout << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!" << std::endl;
+		while (boost::filesystem::exists(storageDir_ + fileName)) {
 			std::cerr << "File already exists: " << fileName << std::endl;
 			fileName = generateFileName(runNumber, burstID, ++counter);
+			std::cout << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!" << std::endl;
 		}
 
 		std::cerr << "Instead writing file: " << fileName << std::endl;
-		filePath = Options::STORAGE_DIR + "/" + fileName;
+		filePath = storageDir_ + fileName;
 	}
 
 	std::ofstream myfile;
@@ -122,13 +143,17 @@ void Merger::saveBurst(std::map<uint32_t, EVENT_HDR*>& eventByID, uint32_t& burs
 
 	size_t bytes = 0;
 	for (auto pair : eventByID) {
-		myfile.write((char*) pair.second, pair.second->length * 4);
-		bytes += pair.second->length * 4;
+		myfile.write((char*) pair.second->data(), pair.second->size());
+		bytes += pair.second->size();
 
-		delete[] pair.second;
+		delete pair.second;
 	}
 	myfile.close();
-	system(std::string("chown na62cdr:vl " + filePath).data());
+
+//	std::stringstream chownCommand;
+//	chownCommand << "chown na62cdr:vl " << filePath;
+//	system(chownCommand.str().c_str());
+	chown(filePath.c_str(), ownerID_, groupID_);
 
 	writeBKMFile(filePath, fileName, bytes);
 
@@ -174,14 +199,19 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 }
 
 std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
+	std::stringstream fileName;
+	fileName << "cdr" << std::setfill('0') << std::setw(2) << Options::MERGER_ID;
+	fileName << std::setfill('0') << std::setw(6) << runNumber << "-";
+	fileName << std::setfill('0') << std::setw(4) << burstID;
+
 	char buffer[64];
 
-	if (duplicate == 0) {
-		sprintf(buffer, "cdr%02u%06u-%04u.dat", Options::MERGER_ID, runNumber, burstID);
-	} else {
+	if (duplicate != 0) {
+		fileName << "_" << duplicate << burstID;
 		sprintf(buffer, "cdr%02u%06u-%04u_%u.dat", Options::MERGER_ID, runNumber, burstID, duplicate);
 	}
-	return std::string(buffer);
+	fileName << ".dat";
+	return fileName.str();
 }
 
 } /* namespace merger */
