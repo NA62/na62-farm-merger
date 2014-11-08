@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 	MonitorConnector monitor(merger);
 
 	CommandConnector commands(merger);
-	commands.startThread();
+	commands.startThread("CommandConnector");
 
 	zmq::context_t context(1);
 	zmq::socket_t frontEnd(context, ZMQ_PULL);

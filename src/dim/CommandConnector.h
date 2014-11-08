@@ -10,7 +10,7 @@
 
 #include <boost/noncopyable.hpp>
 
-#include "../utils/AExecutable.h"
+#include <utils/AExecutable.h>
 #include "../merger/Merger.hpp"
 
 namespace na62 {

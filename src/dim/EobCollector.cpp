@@ -16,7 +16,7 @@
 #include <structs/Event.h>
 
 #include "../options/Options.h"
-#include "../utils/Utils.h"
+#include <utils/Utils.h>
 
 namespace na62 {
 namespace dim {

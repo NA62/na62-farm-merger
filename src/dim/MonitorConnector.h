@@ -18,8 +18,8 @@
 #include <boost/shared_ptr.hpp>
 
 #include <monitoring/IPCHandler.h>
+#include <utils/Stopwatch.h>
 
-#include "../utils/Stopwatch.h"
 #include "../merger/Merger.hpp"
 
 

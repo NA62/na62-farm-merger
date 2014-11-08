@@ -17,9 +17,9 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include "../exceptions/BadOption.h"
-#include "../exceptions/UnknownSourceIDFound.h"
-#include "../utils/Utils.h"
+#include <exceptions/BadOption.h>
+#include <exceptions/UnknownSourceIDFound.h>
+#include <utils/Utils.h>
 
 namespace na62 {
 namespace merger {

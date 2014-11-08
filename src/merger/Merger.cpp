@@ -11,6 +11,7 @@
 #include <boost/filesystem.hpp>
 #include <structs/Event.h>
 #include <pwd.h>
+#include <iomanip>
 
 #include "../options/Options.h"
 
@@ -183,7 +184,7 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 	BKMFile.write(dataFilePath.data(), dataFilePath.length());
 	BKMFile.write("\n", 1);
 
-	std::string sizeLine = "size: " + boost::lexical_cast<std::string>(fileLength);
+	std::string sizeLine = "size: " + std::to_string(fileLength);
 	BKMFile.write(sizeLine.data(), sizeLine.length());
 	BKMFile.write("\n", 1);
 

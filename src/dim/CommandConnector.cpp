@@ -17,6 +17,7 @@
 #include <iterator>
 #include <string>
 #include <vector>
+#include <boost/algorithm/string.hpp>
 
 #include "../messages/MessageHandler.h"
 
