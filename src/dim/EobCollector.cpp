@@ -45,7 +45,9 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 			LOG(ERROR)<< "EOB Service "<<dimInfo->getName()<<" does not contain the right number of bytes: The header says " <<
 			hdr->length*4 << " but DIM stores " << dataLength;
 		} else {
-			return (EobDataHdr*) data;
+			char* buff = new char[dataLength];
+			memcpy(buff, data, dataLength);
+			return (EobDataHdr*) buff;
 		}
 	}
 	return nullptr;
@@ -104,7 +106,7 @@ void EobCollector::run() {
 					if( hdr != nullptr) {
 						LOG(ERROR) << "Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob;
 					}
-					delete hdr;
+					delete[] hdr;
 				}
 			}
 		});
@@ -127,9 +129,9 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	// The actual new size will be stored here
 	uint newEventSize = newEventBufferSize;
 
-	auto eobDataMap = eobDataByBurstIDBySourceID[event->burstID];
+	auto eobDataBySourceID = eobDataByBurstIDBySourceID[event->burstID];
 
-	if (eobDataMap.size() == 0) {
+	if (eobDataBySourceID.size() == 0) {
 		return eventMessage;
 	}
 
@@ -144,7 +146,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0) {
+		if (eobDataBySourceID.count(sourceIdAndOffset.sourceID) == 0) {
 			continue;
 		}
 
@@ -152,7 +154,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		 * Sum all EOB-Dim data and add it to the eventBufferSize
 		 */
 		uint additionalWordsForThisSource = 0;
-		for (auto hdr : eobDataMap[sourceIdAndOffset.sourceID]) {
+		for (auto hdr : eobDataBySourceID[sourceIdAndOffset.sourceID]) {
 			additionalWordsForThisSource += hdr->length;
 		}
 		newEventBufferSize += additionalWordsForThisSource * 4;
@@ -184,7 +186,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-		if (eobDataMap.count(sourceIdAndOffset.sourceID) == 0) {
+		if (eobDataBySourceID.count(sourceIdAndOffset.sourceID) == 0) {
 			continue;
 		}
 
@@ -210,16 +212,16 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		/*
 		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
-		for (EobDataHdr* data : eobDataMap[sourceIdAndOffset.sourceID]) {
+		for (EobDataHdr* data : eobDataBySourceID[sourceIdAndOffset.sourceID]) {
 			std::cout << "Writing EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID << std::endl;
 
 			newEventSize += data->length * 4;
 
 			memcpy(eventBuffer + newEventPtr, data, data->length * 4);
 			newEventPtr += data->length * 4;
-			delete data;
+			delete[] data;
 		}
-		eobDataMap.erase(sourceIdAndOffset.sourceID);
+		eobDataBySourceID.erase(sourceIdAndOffset.sourceID);
 	}
 
 	/*
