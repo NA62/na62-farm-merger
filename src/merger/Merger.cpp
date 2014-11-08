@@ -204,11 +204,8 @@ std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint3
 	fileName << std::setfill('0') << std::setw(6) << runNumber << "-";
 	fileName << std::setfill('0') << std::setw(4) << burstID;
 
-	char buffer[64];
-
 	if (duplicate != 0) {
-		fileName << "_" << duplicate << burstID;
-		sprintf(buffer, "cdr%02u%06u-%04u_%u.dat", Options::MERGER_ID, runNumber, burstID, duplicate);
+		fileName << "_" << duplicate;
 	}
 	fileName << ".dat";
 	return fileName.str();
