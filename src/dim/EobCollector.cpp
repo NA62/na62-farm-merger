@@ -15,7 +15,7 @@
 
 #include <structs/Event.h>
 
-#include "../options/Options.h"
+#include "../options/MyOptions.h"
 #include <utils/Utils.h>
 
 namespace na62 {
@@ -87,7 +87,7 @@ void EobCollector::run() {
 					/*
 					 * Wait for the services to update the data
 					 */
-					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
+					usleep(MyOptions::GetInt(OPTION_EOB_COLLECTION_TIMEOUT)*1000);
 
 					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 

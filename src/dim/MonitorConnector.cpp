@@ -4,9 +4,9 @@
  *  Created on: Nov 18, 2011
  *      Author: kunzejo
  */
+#include <glog/logging.h>
 
-#include "../options/Options.h"
-#include "../messages/MessageHandler.h"
+#include "../options/MyOptions.h"
 #include "MonitorConnector.h"
 
 namespace na62 {
@@ -17,13 +17,13 @@ using namespace na62;
 MonitorConnector::MonitorConnector(Merger& merger) :
 		merger_(merger), currentState(OFF), timer_(monitoringService) {
 
-	mycout << "Started monitor connector" << std::endl;
+	LOG(INFO) << "Started monitor connector";
 
 	boost::thread(boost::bind(&MonitorConnector::thread, this));
 }
 
 void MonitorConnector::thread() {
-	timer_.expires_from_now(boost::posix_time::milliseconds(Options::MONITOR_UPDATE_TIME));
+	timer_.expires_from_now(boost::posix_time::milliseconds(Options::GetInt(OPTION_DIM_UPDATE_TIME)));
 	/*
 	 * Add this PC to the table. As the Hostname-Column has a unique index we do not have to ckeck if the entry already exists
 	 */
@@ -43,7 +43,7 @@ void MonitorConnector::updateState(na62::STATE newState) {
 
 void MonitorConnector::handleUpdate() {
 // Invoke this method every 'sleepTime' milliseconds
-	timer_.expires_from_now(boost::posix_time::milliseconds(Options::MONITOR_UPDATE_TIME));
+	timer_.expires_from_now(boost::posix_time::milliseconds(Options::GetInt(OPTION_DIM_UPDATE_TIME)));
 	timer_.async_wait(boost::bind(&MonitorConnector::handleUpdate, this));
 
 	updateWatch_.reset();
