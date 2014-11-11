@@ -17,7 +17,6 @@
  * Dynamic Options
  */
 #define OPTION_HELP (char*)"help"
-#define OPTION_VERBOSE (char*)"verbose"
 #define OPTION_CONFIG_FILE (char*)"configFile"
 
 #define OPTION_LISTEN_PORT (char*)"listenPort"
@@ -47,10 +46,6 @@ public:
 
 	static void Load(int argc, char* argv[]) {
 		desc.add_options()
-
-		(OPTION_HELP, "Produce help message")
-
-		(OPTION_VERBOSE, "Verbose mode")
 
 		(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")
 

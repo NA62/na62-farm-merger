@@ -75,7 +75,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 	auto lb = burstMap.lower_bound(event->eventNum);
 
 	if (lb != burstMap.end() && !(burstMap.key_comp()(event->eventNum, lb->first))) {
-		LOG(ERROR) << "Event "<<event->eventNum<< "received twice. Dropping the second one!";
+		LOG(ERROR) << "Event "<<event->eventNum<< " received twice. Dropping the second one!";
 		delete eventMessage;
 	} else {
 		/*
@@ -218,7 +218,7 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 
 std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
 	std::stringstream fileName;
-	fileName << "cdr" << std::setfill('0') << std::setw(2) << Options::GetString(OPTION_MERGER_ID);
+	fileName << "cdr" << std::setfill('0') << std::setw(2) << Options::GetInt(OPTION_MERGER_ID);
 	fileName << std::setfill('0') << std::setw(6) << runNumber << "-";
 	fileName << std::setfill('0') << std::setw(4) << burstID;
 
