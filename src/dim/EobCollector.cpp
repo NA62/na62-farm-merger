@@ -15,8 +15,8 @@
 
 #include <structs/Event.h>
 
-#include "../options/Options.h"
-#include "../utils/Utils.h"
+#include "../options/MyOptions.h"
+#include <utils/Utils.h>
 
 namespace na62 {
 namespace dim {
@@ -87,7 +87,7 @@ void EobCollector::run() {
 					/*
 					 * Wait for the services to update the data
 					 */
-					usleep(na62::merger::Options::EOB_COLLECTION_TIMEOUT*1000);
+					usleep(MyOptions::GetInt(OPTION_EOB_COLLECTION_TIMEOUT)*1000);
 
 					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 
@@ -116,8 +116,9 @@ void EobCollector::run() {
 
 zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
+
 	if (eobDataByBurstIDBySourceID.count(event->burstID) == 0) {
-		LOG(ERROR)<<"Trying to write EOB data of burst " << event->burstID << " even though it does not exist";
+		LOG(ERROR)<<"Trying to write dim-EOB data of burst " << event->burstID << " even though none has been received";
 		return eventMessage;
 	}
 
@@ -132,6 +133,17 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	auto eobDataBySourceID = eobDataByBurstIDBySourceID[event->burstID];
 
 	if (eobDataBySourceID.size() == 0) {
+		return eventMessage;
+	}
+
+	if (event->getL0TriggerTypeWord() != TRIGGER_L0_EOB) {
+		for (auto sourceIDAndDataVector : eobDataBySourceID) {
+			for (auto data : sourceIDAndDataVector.second) {
+				delete[] data;
+			}
+			eobDataBySourceID.erase(sourceIDAndDataVector.first);
+		}
+		eobDataByBurstIDBySourceID.erase(event->burstID);
 		return eventMessage;
 	}
 

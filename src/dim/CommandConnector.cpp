@@ -17,8 +17,8 @@
 #include <iterator>
 #include <string>
 #include <vector>
-
-#include "../messages/MessageHandler.h"
+#include <glog/logging.h>
+#include <boost/algorithm/string.hpp>
 
 namespace na62 {
 namespace merger {
@@ -35,18 +35,18 @@ void CommandConnector::thread() {
 	while (true) {
 		message = IPCHandler::getNextCommand();
 
-		std::cout << "Received command: " << message << std::endl;
+		LOG(INFO) << "Received command: " << message;
 		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
 		std::vector<std::string> strings;
 		boost::split(strings, message, boost::is_any_of(":"));
 		if (strings.size() != 2) {
-			mycerr << "Unknown command: " << message << std::endl;
+			LOG(ERROR) << "Unknown command: " << message;
 		} else {
 			std::string command = strings[0];
 			if (command == "updaterunnumber") {
 				uint32_t runNumber = boost::lexical_cast<int>(strings[1]);
-				mycout << "Updating runNumber to " << runNumber << std::endl;
+				LOG(INFO) << "Updating runNumber to " << runNumber;
 				merger_.updateRunNumber(runNumber);
 			}  else if (message.size() > 14 && message.substr(0, 14) == "sob_timestamp:") {
 				std::string timeStampString = message.substr(14, message.size() - 14);

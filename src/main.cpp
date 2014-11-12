@@ -21,7 +21,7 @@
 #include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
 #include "merger/Merger.hpp"
-#include "options/Options.h"
+#include "options/MyOptions.h"
 
 using namespace na62::merger;
 using namespace na62;
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 	 * Read program parameters
 	 */
 	std::cout << "Initializing Options" << std::endl;
-	Options::Initialize(argc, argv);
+	MyOptions::Load(argc, argv);
 
 	na62::ZMQHandler::Initialize(1);
 
@@ -39,13 +39,13 @@ int main(int argc, char* argv[]) {
 	MonitorConnector monitor(merger);
 
 	CommandConnector commands(merger);
-	commands.startThread();
+	commands.startThread("CommandConnector");
 
 	zmq::context_t context(1);
 	zmq::socket_t frontEnd(context, ZMQ_PULL);
 
 	std::stringstream bindURI;
-	bindURI << "tcp://*:" << Options::LISTEN_PORT;
+	bindURI << "tcp://*:" << Options::GetInt(OPTION_LISTEN_PORT);
 
 	std::cout << "Opening ZMQ socket " << bindURI.str() << std::endl;
 	frontEnd.bind(bindURI.str().c_str());
