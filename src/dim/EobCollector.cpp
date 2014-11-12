@@ -136,9 +136,9 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		return eventMessage;
 	}
 
-	if (event->getL0TriggerTypeWord() != TRIGGER_L0_EOB){
+	if (event->getL0TriggerTypeWord() != TRIGGER_L0_EOB) {
 		for (auto sourceIDAndDataVector : eobDataBySourceID) {
-			for(auto data: sourceIDAndDataVector.second){
+			for (auto data : sourceIDAndDataVector.second) {
 				delete[] data;
 			}
 			eobDataBySourceID.erase(sourceIDAndDataVector.first);
