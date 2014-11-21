@@ -123,10 +123,11 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 }
 
 void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID) {
+	uint32_t sob = SOBtimestampByBurst[burstID];
 	uint32_t runNumber = runNumberByBurst[burstID];
 	runNumberByBurst.erase(burstID);
 
-	std::string fileName = generateFileName(runNumber, burstID, 0);
+	std::string fileName = generateFileName(sob, runNumber, burstID, 0);
 	std::string filePath = storageDir_ + fileName;
 	LOG(INFO)<< "Writing file " << filePath;
 
@@ -139,12 +140,12 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 	if (boost::filesystem::exists(filePath)) {
 		LOG(ERROR)<< "File already exists: " << filePath;
 		int counter = 2;
-		fileName = generateFileName(runNumber, burstID, counter);
+		fileName = generateFileName(sob, runNumber, burstID, counter);
 
 		LOG(INFO) << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!";
 		while (boost::filesystem::exists(storageDir_ + fileName)) {
 			LOG(ERROR) << "File already exists: " << fileName;
-			fileName = generateFileName(runNumber, burstID, ++counter);
+			fileName = generateFileName(sob, runNumber, burstID, ++counter);
 			LOG(INFO) << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!";
 		}
 
@@ -224,10 +225,10 @@ void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t
 	LOG(INFO)<< "Wrote BKM file " << BKMFilePath;
 }
 
-std::string Merger::generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
+std::string Merger::generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
 	std::stringstream fileName;
-	fileName << "cdr" << std::setfill('0') << std::setw(2) << Options::GetInt(OPTION_MERGER_ID);
-	fileName << std::setfill('0') << std::setw(6) << runNumber << "-";
+	fileName << "na62raw_" << sob << "-"<< std::setfill('0') << std::setw(2) << Options::GetInt(OPTION_MERGER_ID);
+	fileName << "-" << std::setfill('0') << std::setw(6) << runNumber << "-";
 	fileName << std::setfill('0') << std::setw(4) << burstID;
 
 	if (duplicate != 0) {
