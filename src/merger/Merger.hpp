@@ -58,7 +58,7 @@ private:
 	void startBurstControlThread(uint32_t& burstID);
 	void saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID);
 	void writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength);
-	std::string generateFileName(uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
+	std::string generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
 
