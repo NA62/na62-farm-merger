@@ -35,18 +35,18 @@ void CommandConnector::thread() {
 	while (true) {
 		message = IPCHandler::getNextCommand();
 
-		LOG(INFO) << "Received command: " << message;
+		LOG_INFO << "Received command: " << message;
 		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
 		std::vector<std::string> strings;
 		boost::split(strings, message, boost::is_any_of(":"));
 		if (strings.size() != 2) {
-			LOG(ERROR) << "Unknown command: " << message;
+			LOG_ERROR << "Unknown command: " << message;
 		} else {
 			std::string command = strings[0];
 			if (command == "updaterunnumber") {
 				uint32_t runNumber = boost::lexical_cast<int>(strings[1]);
-				LOG(INFO) << "Updating runNumber to " << runNumber;
+				LOG_INFO << "Updating runNumber to " << runNumber;
 				merger_.updateRunNumber(runNumber);
 			}  else if (message.size() > 14 && message.substr(0, 14) == "sob_timestamp:") {
 				std::string timeStampString = message.substr(14, message.size() - 14);
