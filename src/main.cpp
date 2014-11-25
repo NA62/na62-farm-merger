@@ -15,6 +15,7 @@
 #include <vector>
 #include <thread>
 
+#include <options/Logging.h>
 #include <socket/ZMQHandler.h>
 #include <monitoring/IPCHandler.h>
 
@@ -30,7 +31,7 @@ int main(int argc, char* argv[]) {
 	/*
 	 * Read program parameters
 	 */
-	std::cout << "Initializing Options" << std::endl;
+	LOG_INFO << "Initializing Options" << ENDL;
 	MyOptions::Load(argc, argv);
 
 	na62::ZMQHandler::Initialize(1);
@@ -47,7 +48,7 @@ int main(int argc, char* argv[]) {
 	std::stringstream bindURI;
 	bindURI << "tcp://*:" << Options::GetInt(OPTION_LISTEN_PORT);
 
-	std::cout << "Opening ZMQ socket " << bindURI.str() << std::endl;
+	LOG_INFO << "Opening ZMQ socket " << bindURI.str() << ENDL;
 	frontEnd.bind(bindURI.str().c_str());
 
 	int highWaterMark = 10000000;
@@ -65,7 +66,7 @@ int main(int argc, char* argv[]) {
 		if (eventMessage->size() == event->length * 4) {
 			merger.addPacket(eventMessage);
 		} else {
-			std::cerr << "Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) << std::endl;
+			LOG_ERROR << "Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) << ENDL;
 		}
 	}
 
