@@ -38,7 +38,7 @@ MonitorConnector::~MonitorConnector() {
 void MonitorConnector::updateState(na62::STATE newState) {
 	currentState = newState;
 
-	IPCHandler::updateState (currentState);
+	IPCHandler::updateState(currentState);
 }
 
 void MonitorConnector::handleUpdate() {
@@ -48,9 +48,11 @@ void MonitorConnector::handleUpdate() {
 
 	updateWatch_.reset();
 
-	IPCHandler::updateState (currentState);
+	IPCHandler::updateState(currentState);
 
 	sendStatistics("BurstProgress", merger_.getProgressStats());
+	sendStatistics("EventsInLastBurst", std::to_string(merger_.getNumberOfEventsInLastBurst()));
+
 }
 
 void MonitorConnector::sendStatistics(std::string name, std::string values) {

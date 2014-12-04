@@ -46,6 +46,10 @@ public:
 		return stream.str();
 	}
 
+	uint getNumberOfEventsInLastBurst(){
+		return eventsInLastBurst_;
+	}
+
 	void updateRunNumber(uint32_t newRunNumber) {
 		currentRunNumber_ = newRunNumber;
 	}
@@ -65,6 +69,8 @@ private:
 	dim::EobCollector eobCollector_;
 
 	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
+	uint eventsInLastBurst_;
+
 	std::map<uint32_t, uint32_t> runNumberByBurst;
 	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;
