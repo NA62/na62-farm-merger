@@ -2,7 +2,7 @@
  * CommandConnector.cpp
  *
  *  Created on: Jul 25, 2012
- *      Author: root
+ *      Author: Jonas Kunze (kunze.jonas@gmail.com)
  */
 
 #include "CommandConnector.h"

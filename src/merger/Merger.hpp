@@ -2,7 +2,7 @@
  * Merger.h
  *
  *  Created on: Jul 6, 2012
- *      Author: root
+ *      Author: Jonas Kunze (kunze.jonas@gmail.com)
  */
 
 #ifndef MERGER_H_
@@ -41,9 +41,13 @@ public:
 	std::string getProgressStats() {
 		std::stringstream stream;
 		for (auto pair : eventsByBurstByID) {
-			stream << pair.first << ";" << pair.second.size() << ";";
+			stream << pair.first << ":" << pair.second.size() << ";";
 		}
 		return stream.str();
+	}
+
+	uint getNumberOfEventsInLastBurst(){
+		return eventsInLastBurst_;
 	}
 
 	void updateRunNumber(uint32_t newRunNumber) {
@@ -65,6 +69,8 @@ private:
 	dim::EobCollector eobCollector_;
 
 	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
+	uint eventsInLastBurst_;
+
 	std::map<uint32_t, uint32_t> runNumberByBurst;
 	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
 	uint32_t currentRunNumber_;
