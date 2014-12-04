@@ -85,7 +85,6 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 		 */
 		burstMap.insert(lb, std::map<uint32_t, zmq::message_t*>::value_type(+event->eventNum, eventMessage));
 	}
-
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {

@@ -41,7 +41,7 @@ public:
 	std::string getProgressStats() {
 		std::stringstream stream;
 		for (auto pair : eventsByBurstByID) {
-			stream << pair.first << ";" << pair.second.size() << ";";
+			stream << pair.first << ":" << pair.second.size() << ";";
 		}
 		return stream.str();
 	}
