@@ -176,7 +176,10 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 	boost::posix_time::ptime stop(boost::posix_time::microsec_clock::local_time());
 	boost::posix_time::time_duration dt = stop - start;
 	long msec = dt.total_milliseconds();
-	long dataRate = bytes / msec * 1000; // B/s
+	long dataRate = 0;
+	if (msec != 0) {
+		dataRate = bytes / msec * 1000; // B/s
+	}
 
 //	std::stringstream chownCommand;
 //	chownCommand << "chown na62cdr:vl " << filePath;
