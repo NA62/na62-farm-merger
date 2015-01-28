@@ -16,9 +16,6 @@
 /*
  * Dynamic Options
  */
-#define OPTION_HELP (char*)"help"
-#define OPTION_CONFIG_FILE (char*)"configFile"
-
 #define OPTION_LISTEN_PORT (char*)"listenPort"
 
 #define OPTION_STORAGE_DIR (char*)"storageDir"
