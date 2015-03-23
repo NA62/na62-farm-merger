@@ -10,12 +10,14 @@
 #include <boost/thread/thread.hpp>
 #include <boost/filesystem.hpp>
 #include <structs/Event.h>
-#include <pwd.h>
+
 #include <iomanip>
 #include <glog/logging.h>
 #include <boost/date_time.hpp>
 
 #include <utils/Utils.h>
+
+#include <storage/BurstFileWriter.h>
 
 #include "../options/MyOptions.h"
 
@@ -30,17 +32,13 @@ Merger::Merger() :
 
 	eobCollector_.run();
 
-	struct passwd *pwd = getpwnam("na62cdr"); /* don't free, see getpwnam() for details */
-	ownerID_ = pwd->pw_uid;
-	groupID_ = pwd->pw_gid;
-
 }
 
 void Merger::addPacket(zmq::message_t* eventMessage) {
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 
 	if (currentRunNumber_ == 0) {
-		LOG_INFO << "Run number not yet set -> Dropping incoming events";
+		LOG_INFO<< "Run number not yet set -> Dropping incoming events";
 		delete eventMessage;
 		return;
 	}
@@ -56,7 +54,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 			 */
 			usleep(1000);
 			if (nextBurstSOBtimestamp_ == 0) {
-				LOG_ERROR << "Received event even though the SOB is not defined yet. Dropping data!";
+				LOG_ERROR<< "Received event even though the SOB is not defined yet. Dropping data!";
 				delete eventMessage;
 				return;
 			}
@@ -77,7 +75,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 	auto lb = burstMap.lower_bound(event->eventNum);
 
 	if (lb != burstMap.end() && !(burstMap.key_comp()(event->eventNum, lb->first))) {
-		LOG_ERROR << "Event " << event->eventNum << " received twice. Dropping the second one!";
+		LOG_ERROR<< "Event " << event->eventNum << " received twice. Dropping the second one!";
 		delete eventMessage;
 	} else {
 		/*
@@ -89,7 +87,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {
-	LOG_INFO << "New burst: " << newBurstID;
+	LOG_INFO<< "New burst: " << newBurstID;
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
 	runNumberByBurst[newBurstID] = currentRunNumber_;
 }
@@ -100,7 +98,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 		lastEventNum = eventsByBurstByID[burstID].size();
 		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
 	} while (eventsByBurstByID[burstID].size() > lastEventNum);
-	LOG_INFO << "Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.";
+	LOG_INFO<< "Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.";
 	handle_burstFinished(burstID);
 }
 
@@ -130,16 +128,16 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 
 	std::string fileName = generateFileName(sob, runNumber, burstID, 0);
 	std::string filePath = storageDir_ + fileName;
-	LOG_INFO << "Writing file " << filePath;
+	LOG_INFO<< "Writing file " << filePath;
 
 	int numberOfEvents = eventByID.size();
 	if (numberOfEvents == 0) {
-		LOG_ERROR << "No event received for burst " << burstID;
+		LOG_ERROR<< "No event received for burst " << burstID;
 		return;
 	}
 
 	if (boost::filesystem::exists(filePath)) {
-		LOG_ERROR << "File already exists: " << filePath;
+		LOG_ERROR<< "File already exists: " << filePath;
 		int counter = 2;
 		fileName = generateFileName(sob, runNumber, burstID, counter);
 
@@ -154,80 +152,15 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 		filePath = storageDir_ + fileName;
 	}
 
-	std::ofstream myfile;
-	myfile.open(filePath.data(), std::ios::out | std::ios::trunc | std::ios::binary);
+	BurstFileWriter writer(filePath, fileName, eventByID.size(), sob, runNumber, burstID);
 
-	if (!myfile.good()) {
-		LOG_ERROR << "Unable to write to file " << filePath;
-		// carry on to free the memory. myfile.write will not throw!
-	}
-
-	boost::posix_time::ptime start(boost::posix_time::microsec_clock::local_time());
-
-	size_t bytes = 0;
 	for (auto pair : eventByID) {
-		myfile.write((char*) pair.second->data(), pair.second->size());
-		bytes += pair.second->size();
+		writer.writeEvent(reinterpret_cast<EVENT_HDR*>(pair.second->data()));
 
 		delete pair.second;
 	}
-	myfile.close();
 
-	boost::posix_time::ptime stop(boost::posix_time::microsec_clock::local_time());
-	boost::posix_time::time_duration dt = stop - start;
-	long msec = dt.total_milliseconds();
-	long dataRate = 0;
-	if (msec != 0) {
-		dataRate = bytes / msec * 1000; // B/s
-	}
-
-//	std::stringstream chownCommand;
-//	chownCommand << "chown na62cdr:vl " << filePath;
-//	system(chownCommand.str().c_str());
-	chown(filePath.c_str(), ownerID_, groupID_);
-
-	writeBKMFile(filePath, fileName, bytes);
-
-	LOG_INFO << "Wrote burst " << burstID << " with " << numberOfEvents << " events and " << Utils::FormatSize(bytes) << "B with "
-			<< Utils::FormatSize(dataRate) << "B/s";
-}
-
-void Merger::writeBKMFile(std::string dataFilePath, std::string fileName, size_t fileLength) {
-	time_t rawtime;
-	struct tm * timeinfo;
-	char timeString[24];
-
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-
-	strftime(timeString, 64, "%d-%m-%y_%H:%M:%S", timeinfo);
-
-	std::string BKMFilePath = Options::GetString(OPTION_BKM_DIR) + "/" + fileName;
-
-	std::ofstream BKMFile;
-	BKMFile.open(BKMFilePath.data(), std::ios::out | std::ios::trunc);
-
-	if (!BKMFile.good()) {
-		LOG_ERROR << "Unable to write to file " << BKMFilePath;
-		return;
-	}
-
-	BKMFile.write(dataFilePath.data(), dataFilePath.length());
-	BKMFile.write("\n", 1);
-
-	std::string sizeLine = "size: " + std::to_string(fileLength);
-	BKMFile.write(sizeLine.data(), sizeLine.length());
-	BKMFile.write("\n", 1);
-
-	std::string dateLine = "datetime: " + std::string(timeString);
-	BKMFile.write(dateLine.data(), dateLine.length());
-	BKMFile.write("\n", 1);
-
-	BKMFile.close();
-
-	system(std::string("chown na62cdr:vl " + BKMFilePath).data());
-
-	LOG_INFO << "Wrote BKM file " << BKMFilePath;
+	writer.writeBkmFile(Options::GetString(OPTION_BKM_DIR));
 }
 
 std::string Merger::generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
