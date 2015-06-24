@@ -15,6 +15,7 @@
 
 #include <structs/Event.h>
 #include <options/Logging.h>
+#include <eventBuilding/SourceIDManager.h>
 
 #include "../options/MyOptions.h"
 #include <utils/Utils.h>
@@ -156,6 +157,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	/*
 	 * Calculate the new event length by adding the lengths of all EOB-dim data
 	 */
+	uint totalEOBlength = 0;
 	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
@@ -171,13 +173,19 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 			additionalWordsForThisSource += hdr->length;
 		}
 		newEventBufferSize += additionalWordsForThisSource * 4;
+		totalEOBlength += additionalWordsForThisSource * 4;
+	}
+	/*
+	 * The data of following sourceIDs will be shifted -> increase their pointer offsets
+	 */
+	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
+		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
-		/*
-		 * The data of following sourceIDs will be shifted -> increase their pointer offsets
-		 */
-		for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
-			EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
-			sourceIdAndOffset.offset += additionalWordsForThisSource;
+		if (sourceIdAndOffset.sourceID == SOURCE_ID_NSTD) {
+			for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
+				EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
+				sourceIdAndOffset.offset += totalEOBlength;
+			}
 		}
 	}
 
@@ -188,13 +196,8 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		return eventMessage;
 	}
 
-	zmq::message_t* newEventMessage = new zmq::message_t(newEventBufferSize);
-	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage->data();
-	char* eventBuffer = reinterpret_cast<char*>(newEventMessage->data());
-
-	uint oldEventPtr = 0;
-	uint newEventPtr = 0;
-
+	char * allEOBpacket = new char[totalEOBlength];
+	char *EOBpnt = allEOBpacket;
 	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
 
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
@@ -202,6 +205,31 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		if (eobDataBySourceID.count(sourceIdAndOffset.sourceID) == 0) {
 			continue;
 		}
+
+		/*
+		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
+		 */
+		for (EobDataHdr* data : eobDataBySourceID[sourceIdAndOffset.sourceID]) {
+			LOG_INFO<< "Copying EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID << ENDL;
+			memcpy(EOBpnt, data, data->length * 4);
+
+			EOBpnt += data->length * 4;
+
+			delete[] data;
+		}
+		eobDataBySourceID.erase(sourceIdAndOffset.sourceID);
+	}
+
+	zmq::message_t* newEventMessage = new zmq::message_t(newEventBufferSize);
+	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage->data();
+	char* eventBuffer = reinterpret_cast<char*>(newEventMessage->data());
+
+	uint oldEventPtr = 0;
+	uint newEventPtr = 0;
+	uint * saveEventPtr = 0;
+	for (int sourceNum = 0; sourceNum != event->numberOfDetectors; sourceNum++) {
+
+		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
 		uint bytesToCopyFromOldEvent = 0;
 		if (sourceNum != event->numberOfDetectors - 1) {
@@ -219,24 +247,24 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		}
 
 		memcpy(eventBuffer + newEventPtr, ((char*) event) + oldEventPtr, bytesToCopyFromOldEvent);
+		saveEventPtr = (uint *) (eventBuffer + newEventPtr);
 		oldEventPtr += bytesToCopyFromOldEvent;
 		newEventPtr += bytesToCopyFromOldEvent;
 
 		/*
-		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
+		 * Copy all EOB data to sourceID SOURCE_ID_NSTD EOB data
 		 */
-		for (EobDataHdr* data : eobDataBySourceID[sourceIdAndOffset.sourceID]) {
-			LOG_INFO << "Writing EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID << ENDL;
 
-			newEventSize += data->length * 4;
+		if (sourceIdAndOffset.sourceID == SOURCE_ID_NSTD) {
+			LOG_INFO<< "Writing EOB-Data to NSTD block" << ENDL;
+			newEventSize += totalEOBlength;
 
-			memcpy(eventBuffer + newEventPtr, data, data->length * 4);
-			newEventPtr += data->length * 4;
-			delete[] data;
+			memcpy(eventBuffer + newEventPtr, allEOBpacket, totalEOBlength);
+			newEventPtr += totalEOBlength;
+			*saveEventPtr += totalEOBlength;
+			delete[] allEOBpacket;
 		}
-		eobDataBySourceID.erase(sourceIdAndOffset.sourceID);
 	}
-
 	/*
 	 * Copy the rest including the trailer (or only the trailer if the last fragment has EOB data
 	 */
@@ -255,6 +283,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	delete eventMessage;
 
 	return newEventMessage;
+
 }
 }
 }
