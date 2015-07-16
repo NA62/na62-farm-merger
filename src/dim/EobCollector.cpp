@@ -184,7 +184,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		if (sourceIdAndOffset.sourceID == SOURCE_ID_NSTD) {
 			for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
 				EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
-				sourceIdAndOffset.offset += totalEOBlength;
+				sourceIdAndOffset.offset += totalEOBlength/4;
 			}
 		}
 	}
