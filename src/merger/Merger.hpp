@@ -32,8 +32,8 @@ public:
 //		for (auto pair1 : eventsByIDByBurst) {
 //			std::map<uint32_t, EVENT_HDR*>::const_iterator itr2;
 //			for (auto pair2 : pair1.second) {
-//				LOG_INFO << "Burst: " << pair1.first << " EventKey: " << pair2.first << " EventNum: " << pair2.second->eventNum << " lengt: "
-//						<< pair2.second->length * 4 << ENDL;
+//				LOG_INFO("Burst: " << pair1.first << " EventKey: " << pair2.first << " EventNum: " << pair2.second->eventNum << " lengt: "
+//						<< pair2.second->length * 4);
 //			}
 //		}
 //	}

@@ -17,7 +17,7 @@ using namespace na62;
 MonitorConnector::MonitorConnector(Merger& merger) :
 		merger_(merger), currentState(OFF), timer_(monitoringService) {
 
-	LOG_INFO << "Started monitor connector";
+	LOG_INFO("Started monitor connector");
 
 	boost::thread(boost::bind(&MonitorConnector::thread, this));
 }
