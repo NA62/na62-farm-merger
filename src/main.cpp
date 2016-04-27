@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 	/*
 	 * Read program parameters
 	 */
-	LOG_INFO << "Initializing Options" << ENDL;
+	LOG_INFO("Initializing Options");
 	MyOptions::Load(argc, argv);
 
 	na62::ZMQHandler::Initialize(1);
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 	std::stringstream bindURI;
 	bindURI << "tcp://*:" << Options::GetInt(OPTION_LISTEN_PORT);
 
-	LOG_INFO << "Opening ZMQ socket " << bindURI.str() << ENDL;
+	LOG_INFO("Opening ZMQ socket " << bindURI.str());
 	frontEnd.bind(bindURI.str().c_str());
 
 	int highWaterMark = 10000000;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 		if (eventMessage->size() == event->length * 4) {
 			merger.addPacket(eventMessage);
 		} else {
-			LOG_ERROR << "Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) << ENDL;
+			LOG_ERROR("Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) );
 		}
 	}
 

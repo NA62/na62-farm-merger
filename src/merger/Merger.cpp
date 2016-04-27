@@ -38,7 +38,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 
 	if (currentRunNumber_ == 0) {
-		LOG_INFO<< "Run number not yet set -> Dropping incoming events";
+		LOG_INFO("Run number not yet set -> Dropping incoming events");
 		delete eventMessage;
 		return;
 	}
@@ -54,7 +54,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 			 */
 			usleep(1000);
 			if (nextBurstSOBtimestamp_ == 0) {
-				LOG_ERROR<< "Received event even though the SOB is not defined yet. Dropping data!";
+				LOG_ERROR("Received event even though the SOB is not defined yet. Dropping data!");
 				delete eventMessage;
 				return;
 			}
@@ -75,7 +75,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 	auto lb = burstMap.lower_bound(event->eventNum);
 
 	if (lb != burstMap.end() && !(burstMap.key_comp()(event->eventNum, lb->first))) {
-		LOG_ERROR<< "Event " << event->eventNum << " received twice. Dropping the second one!";
+		LOG_ERROR("Event " << event->eventNum << " received twice. Dropping the second one!");
 		delete eventMessage;
 	} else {
 		/*
@@ -87,7 +87,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {
-	LOG_INFO<< "New burst: " << newBurstID;
+	LOG_INFO("New burst: " << newBurstID);
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
 	runNumberByBurst[newBurstID] = currentRunNumber_;
 }
@@ -98,7 +98,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 		lastEventNum = eventsByBurstByID[burstID].size();
 		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
 	} while (eventsByBurstByID[burstID].size() > lastEventNum);
-	LOG_INFO<< "Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.";
+	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
 	handle_burstFinished(burstID);
 }
 
@@ -128,27 +128,27 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 
 	std::string fileName = generateFileName(sob, runNumber, burstID, 0);
 	std::string filePath = storageDir_ + fileName;
-	LOG_INFO<< "Writing file " << filePath;
+	LOG_INFO("Writing file " << filePath);
 
 	int numberOfEvents = eventByID.size();
 	if (numberOfEvents == 0) {
-		LOG_ERROR<< "No event received for burst " << burstID;
+		LOG_ERROR("No event received for burst " << burstID);
 		return;
 	}
 
 	if (boost::filesystem::exists(filePath)) {
-		LOG_ERROR<< "File already exists: " << filePath;
+		LOG_ERROR("File already exists: " << filePath);
 		int counter = 2;
 		fileName = generateFileName(sob, runNumber, burstID, counter);
 
-		LOG_INFO << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!";
+		LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
 		while (boost::filesystem::exists(storageDir_ + fileName)) {
-			LOG_ERROR << "File already exists: " << fileName;
+			LOG_ERROR("File already exists: " << fileName);
 			fileName = generateFileName(sob, runNumber, burstID, ++counter);
-			LOG_INFO << runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!";
+			LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
 		}
 
-		LOG_ERROR << "Instead writing file: " << fileName;
+		LOG_ERROR("Instead writing file: " << fileName);
 		filePath = storageDir_ + fileName;
 	}
 
