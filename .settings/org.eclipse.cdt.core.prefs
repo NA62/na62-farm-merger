@@ -1,5 +1,24 @@
-#Thu Nov 24 12:00:48 CET 2011
 eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.1814680316/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.1814680316/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.1814680316/tag/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.1814680316/tag/operation=append
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.1814680316/tag/value=-gcc49-mt-1_59
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.896409083/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.896409083/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.896409083/tag/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.896409083/tag/operation=append
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063.896409083/tag/value=-gcc49-mt-1_59
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063/tag/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063/tag/operation=append
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1274103063/tag/value=-gcc49-mt-1_59
+environment/project/cdt.managedbuild.config.gnu.cross.exe.release.1322378929/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.release.1322378929/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.release.1322378929/tag/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.release.1322378929/tag/operation=append
+environment/project/cdt.managedbuild.config.gnu.cross.exe.release.1322378929/tag/value=-gcc49-mt-1_59
 org.eclipse.cdt.core.formatter.alignment_for_arguments_in_method_invocation=16
 org.eclipse.cdt.core.formatter.alignment_for_assignment=16
 org.eclipse.cdt.core.formatter.alignment_for_base_clause_in_type_declaration=80
