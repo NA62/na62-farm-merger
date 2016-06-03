@@ -23,7 +23,7 @@
 namespace na62 {
 namespace dim {
 
-uint EobCollector::currentBurstID_ = 0;
+//uint EobCollector::currentBurstID_ = 0;
 
 EobCollector::EobCollector() {
 
@@ -56,18 +56,19 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 }
 
 void EobCollector::run() {
-	dimListener_.registerEobListener([this](uint eob) {
+	dimListener_.registerBurstTimeInfoListener([this](dim::BurstTimeInfo bti) {
+		LOG_INFO("Burst info update for burst " << bti.burstID);
 		/*
 		 * This is executed after every eob update
 		 */
-		if(eob==0) {
+		if(bti.eobTime ==0) {
 			return;
 		}
-
+		burstInfos_.insert(std::pair<uint32_t,dim::BurstTimeInfo> (bti.burstID, bti));
 		/*
 		 * Start a thread that will sleep a while and read the EOB services afterwards
 		 */
-		boost::thread([this, eob]() {
+		boost::thread([this, bti]() {
 					/*
 					 * Update list of DimInfos within one mutex protected scope
 					 */
@@ -80,7 +81,7 @@ void EobCollector::run() {
 							std::string serviceName(service);
 
 							if(eobInfoByName_.count(serviceName) == 0) {
-								LOG_INFO("New service found: " << serviceName << "\t" << format);
+								//LOG_INFO("New service found: " << serviceName << "\t" << format);
 								eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
 							}
 						}
@@ -94,19 +95,21 @@ void EobCollector::run() {
 					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 
 					// Delete old data
-			eobDataByBurstIDBySourceID.erase(currentBurstID_);
+			eobDataByBurstIDBySourceID.erase(bti.burstID);
 
 			/*
 			 * Store data of all services
 			 */
 			for(auto serviceNameAndService: eobInfoByName_) {
 				EobDataHdr* hdr = getData(serviceNameAndService.second);
-				if (hdr != nullptr && hdr->eobTimestamp==eob) {
-					LOG_INFO("Storing data of service " << serviceNameAndService.second->getName() << " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID << " for burst " << currentBurstID_);
-					eobDataByBurstIDBySourceID[currentBurstID_][hdr->detectorID].push_back(hdr);
+				if (hdr != nullptr && hdr->eobTimestamp==bti.eobTime) {
+					LOG_INFO("Storing data of service " << serviceNameAndService.second->getName()
+							<< " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID
+							<< " for burst " << bti.burstID);
+					eobDataByBurstIDBySourceID[bti.burstID][hdr->detectorID].push_back(hdr);
 				} else {
 					if( hdr != nullptr) {
-						LOG_ERROR("Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << eob);
+						LOG_ERROR("Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << bti.eobTime << " for burst " << bti.burstID);
 					}
 					delete[] hdr;
 				}

@@ -50,17 +50,17 @@ public:
 		return eventsInLastBurst_;
 	}
 
-	void updateRunNumber(uint32_t newRunNumber) {
-		currentRunNumber_ = newRunNumber;
-	}
+	//void updateRunNumber(uint32_t newRunNumber) {
+	//	currentRunNumber_ = newRunNumber;
+	//}
 
-	void SetSOBtimestamp(uint32_t SOBtimestamp) {
-		nextBurstSOBtimestamp_ = SOBtimestamp;
-	}
+	//void SetSOBtimestamp(uint32_t SOBtimestamp) {
+	//	nextBurstSOBtimestamp_ = SOBtimestamp;
+	//}
 
 private:
 	void startBurstControlThread(uint32_t& burstID);
-	void saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID);
+	void saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& runNumber, uint32_t& burstID, uint32_t& sobTime);
 	std::string generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate);
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
@@ -70,10 +70,11 @@ private:
 	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
 	uint eventsInLastBurst_;
 
-	std::map<uint32_t, uint32_t> runNumberByBurst;
-	std::map<uint32_t, uint32_t> SOBtimestampByBurst;
-	uint32_t currentRunNumber_;
-	uint32_t nextBurstSOBtimestamp_;
+	std::map<uint32_t, dim::BurstTimeInfo> burstInfos;
+	//std::map<uint32_t, uint32_t> runNumberByBurst;
+	//std::map<uint32_t, uint32_t> SOBtimestampByBurst;
+	uint32_t lastSeenRunNumber_;
+	//uint32_t nextBurstSOBtimestamp_;
 
 	std::mutex newBurstMutex;
 	std::mutex eventMutex;

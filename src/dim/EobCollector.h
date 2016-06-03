@@ -45,9 +45,12 @@ public:
 	 */
 	zmq::message_t* addEobDataToEvent(zmq::message_t* event);
 
-	static void setCurrentBurstID(uint burstID) {
-		currentBurstID_ = burstID;
+	dim::BurstTimeInfo getBurstInfo(uint32_t burstID) {
+		return burstInfos_.at(burstID);
 	}
+	//static void setCurrentBurstID(uint burstID) {
+	//	currentBurstID_ = burstID;
+	//}
 
 private:
 	DimListener dimListener_;
@@ -64,11 +67,13 @@ private:
 
 	std::map <std::string, DimInfo*> eobInfoByName_;
 
+	std::map<uint32_t, dim::BurstTimeInfo> burstInfos_;
+
 	/*
 	 * Stores the current Burst ID which we'll get from incoming events instead of dim
 	 * as the dim burstID does not change while the run control isn't runnings
 	 */
-	static uint currentBurstID_;
+	//static uint currentBurstID_;
 };
 
 }

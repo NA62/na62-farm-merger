@@ -35,7 +35,8 @@ void CommandConnector::thread() {
 	while (true) {
 		message = IPCHandler::getNextCommand();
 
-		LOG_INFO("Received command: " << message);
+		//LOG_INFO("Received command: " << message << ". Ignored by merger.");
+		/*
 		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
 		std::vector<std::string> strings;
@@ -54,6 +55,7 @@ void CommandConnector::thread() {
 				merger_.SetSOBtimestamp(timestamp);
 			}
 		}
+		*/
 	}
 }
 

@@ -27,8 +27,7 @@ namespace na62 {
 namespace merger {
 
 Merger::Merger() :
-		eventsInLastBurst_(0), currentRunNumber_(Options::GetInt(OPTION_RUN_NUMBER)), nextBurstSOBtimestamp_(0), storageDir_(
-				Options::GetString(OPTION_STORAGE_DIR) + "/") {
+		eventsInLastBurst_(0), storageDir_(Options::GetString(OPTION_STORAGE_DIR) + "/"), lastSeenRunNumber_(0) {
 
 	eobCollector_.run();
 
@@ -37,29 +36,11 @@ Merger::Merger() :
 void Merger::addPacket(zmq::message_t* eventMessage) {
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 
-	if (currentRunNumber_ == 0) {
-		LOG_INFO("Run number not yet set -> Dropping incoming events");
-		delete eventMessage;
-		return;
-	}
-
 	uint32_t burstID = event->burstID;
 	std::lock_guard<std::mutex> lock(eventMutex);
 
 	std::map<uint32_t, zmq::message_t*>& burstMap = eventsByBurstByID[burstID];
 	if (burstMap.size() == 0) {
-		if (nextBurstSOBtimestamp_ == 0) { // didn't receive nextBurstID yet
-			/*
-			 * Give it another try (at startup it can take a while until we get the message from dim...
-			 */
-			usleep(1000);
-			if (nextBurstSOBtimestamp_ == 0) {
-				LOG_ERROR("Received event even though the SOB is not defined yet. Dropping data!");
-				delete eventMessage;
-				return;
-			}
-		}
-		dim::EobCollector::setCurrentBurstID(burstID);
 		/*
 		 * Only one thread will start the EOB checking thread
 		 */
@@ -67,10 +48,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 			handle_newBurst(burstID);
 			newBurstMutex.unlock();
 		}
-
-		SOBtimestampByBurst[burstID] = nextBurstSOBtimestamp_;
 	}
-	event->SOBtimestamp = SOBtimestampByBurst[burstID];
 
 	auto lb = burstMap.lower_bound(event->eventNum);
 
@@ -89,7 +67,6 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 void Merger::handle_newBurst(uint32_t newBurstID) {
 	LOG_INFO("New burst: " << newBurstID);
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
-	runNumberByBurst[newBurstID] = currentRunNumber_;
 }
 
 void Merger::startBurstControlThread(uint32_t& burstID) {
@@ -103,30 +80,39 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 }
 
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
-	std::lock_guard<std::mutex> lock(newBurstMutex);
 
+	std::lock_guard<std::mutex> lock(newBurstMutex);
 	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
 
-	if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
-		zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
-		zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
+	uint32_t runno = lastSeenRunNumber_;
+	uint32_t sob = 0;
+	try {
+		dim::BurstTimeInfo burstInfo = eobCollector_.getBurstInfo(finishedBurstID);
+		lastSeenRunNumber_ = burstInfo.runNumber;
+		sob = burstInfo.sobTime;
 
-		EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+		//Extend the EOB event with extra info from DIM
+		if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
+			zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
+			zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
 
-		eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+
+			eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+		}
+
+	}
+	catch (std::exception &e){
+		LOG_ERROR("Missing DIM information for burst " << finishedBurstID << ". This burst will have missing SOB/EOB information!");
 	}
 
-	saveBurst(burst, finishedBurstID);
+	saveBurst(burst, lastSeenRunNumber_, finishedBurstID, sob);
 	eventsInLastBurst_ = eventsByBurstByID[finishedBurstID].size();
 	eventsByBurstByID.erase(finishedBurstID);
 }
 
-void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& burstID) {
-	uint32_t sob = SOBtimestampByBurst[burstID];
-	uint32_t runNumber = runNumberByBurst[burstID];
-	runNumberByBurst.erase(burstID);
-
-	std::string fileName = generateFileName(sob, runNumber, burstID, 0);
+void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& runNumber, uint32_t& burstID, uint32_t& sobTime) {
+	std::string fileName = generateFileName(sobTime, runNumber, burstID, 0);
 	std::string filePath = storageDir_ + fileName;
 	LOG_INFO("Writing file " << filePath);
 
@@ -139,12 +125,12 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 	if (boost::filesystem::exists(filePath)) {
 		LOG_ERROR("File already exists: " << filePath);
 		int counter = 2;
-		fileName = generateFileName(sob, runNumber, burstID, counter);
+		fileName = generateFileName(sobTime, runNumber, burstID, counter);
 
 		LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
 		while (boost::filesystem::exists(storageDir_ + fileName)) {
 			LOG_ERROR("File already exists: " << fileName);
-			fileName = generateFileName(sob, runNumber, burstID, ++counter);
+			fileName = generateFileName(sobTime, runNumber, burstID, ++counter);
 			LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
 		}
 
@@ -152,10 +138,13 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 		filePath = storageDir_ + fileName;
 	}
 
-	BurstFileWriter writer(filePath, fileName, eventByID.size(), sob, runNumber, burstID);
+	BurstFileWriter writer(filePath, fileName, eventByID.size(), sobTime, runNumber, burstID);
 
 	for (auto pair : eventByID) {
-		writer.writeEvent(reinterpret_cast<EVENT_HDR*>(pair.second->data()));
+		EVENT_HDR* ev = reinterpret_cast<EVENT_HDR*>(pair.second->data());
+		// Set SOB time in the event
+		ev->SOBtimestamp = sobTime;
+		writer.writeEvent(ev);
 
 		delete pair.second;
 	}
