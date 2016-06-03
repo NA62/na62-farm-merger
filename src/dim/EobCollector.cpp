@@ -81,7 +81,7 @@ void EobCollector::run() {
 							std::string serviceName(service);
 
 							if(eobInfoByName_.count(serviceName) == 0) {
-								LOG_INFO("New service found: " << serviceName << "\t" << format);
+								//LOG_INFO("New service found: " << serviceName << "\t" << format);
 								eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
 							}
 						}

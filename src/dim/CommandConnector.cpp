@@ -35,7 +35,7 @@ void CommandConnector::thread() {
 	while (true) {
 		message = IPCHandler::getNextCommand();
 
-		LOG_INFO("Received command: " << message << ". Ignored by merger.");
+		//LOG_INFO("Received command: " << message << ". Ignored by merger.");
 		/*
 		std::transform(message.begin(), message.end(), message.begin(), ::tolower);
 
