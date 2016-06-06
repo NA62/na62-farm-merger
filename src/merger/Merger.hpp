@@ -74,13 +74,14 @@ private:
 	std::map<uint32_t, dim::BurstTimeInfo> burstInfos;
 	//std::map<uint32_t, uint32_t> runNumberByBurst;
 	//std::map<uint32_t, uint32_t> SOBtimestampByBurst;
-	uint32_t lastSeenRunNumber_;
 	//uint32_t nextBurstSOBtimestamp_;
 
 	std::mutex newBurstMutex;
 	std::mutex eventMutex;
 
 	const std::string storageDir_;
+	uint32_t lastSeenRunNumber_;
+
 };
 
 } /* namespace merger */
