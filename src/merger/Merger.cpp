@@ -28,7 +28,6 @@ namespace merger {
 
 Merger::Merger() :
 		eventsInLastBurst_(0), storageDir_(Options::GetString(OPTION_STORAGE_DIR) + "/"), lastSeenRunNumber_(0) {
-
 	eobCollector_.run();
 
 }
@@ -75,7 +74,8 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 		lastEventNum = eventsByBurstByID[burstID].size();
 		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
 	} while (eventsByBurstByID[burstID].size() > lastEventNum);
-	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
+	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size()
+			<< " because of normal timeout.");
 	handle_burstFinished(burstID);
 }
 
@@ -83,8 +83,6 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 
 	std::lock_guard<std::mutex> lock(newBurstMutex);
 	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
-
-	uint32_t runno = lastSeenRunNumber_;
 	uint32_t sob = 0;
 	try {
 		dim::BurstTimeInfo burstInfo = eobCollector_.getBurstInfo(finishedBurstID);
@@ -103,7 +101,8 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 
 	}
 	catch (std::exception &e){
-		LOG_ERROR("Missing DIM information for burst " << finishedBurstID << ". This burst will have missing SOB/EOB information!");
+		LOG_ERROR("Missing DIM information for burst " << finishedBurstID
+				<< " in run " <<  lastSeenRunNumber_<< ". This burst will have missing SOB/EOB information!");
 	}
 
 	saveBurst(burst, lastSeenRunNumber_, finishedBurstID, sob);

@@ -64,7 +64,7 @@ void EobCollector::run() {
 		if(bti.eobTime ==0) {
 			return;
 		}
-		burstInfos_.insert(std::pair<uint32_t,dim::BurstTimeInfo> (bti.burstID, bti));
+		burstInfos_[bti.burstID] = bti;
 		/*
 		 * Start a thread that will sleep a while and read the EOB services afterwards
 		 */

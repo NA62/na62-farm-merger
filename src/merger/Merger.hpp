@@ -8,6 +8,7 @@
 #ifndef MERGER_H_
 #define MERGER_H_
 
+#include <atomic>
 #include <mutex>
 #include <stddef.h>
 #include <stdint.h>

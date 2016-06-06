@@ -19,7 +19,7 @@
 #include <socket/ZMQHandler.h>
 #include <monitoring/IPCHandler.h>
 
-#include "dim/CommandConnector.h"
+//#include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
 #include "merger/Merger.hpp"
 #include "options/MyOptions.h"
@@ -39,8 +39,8 @@ int main(int argc, char* argv[]) {
 	Merger merger;
 	MonitorConnector monitor(merger);
 
-	CommandConnector commands(merger);
-	commands.startThread("CommandConnector");
+	//CommandConnector commands(merger);
+	//commands.startThread("CommandConnector");
 
 	zmq::context_t context(1);
 	zmq::socket_t frontEnd(context, ZMQ_PULL);
