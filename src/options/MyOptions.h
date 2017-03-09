@@ -44,7 +44,7 @@ public:
 	static void Load(int argc, char* argv[]) {
 		desc.add_options()
 
-		(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/merger.conf"), "Config file for these options")
+		(OPTION_CONFIG_FILE, po::value<std::string>()->default_value("/etc/na62-merger.conf"), "Config file for these options")
 
 		(OPTION_LISTEN_PORT, po::value<int>()->required(), "tcp-port the merger should listen to")
 
