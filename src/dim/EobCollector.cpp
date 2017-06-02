@@ -21,7 +21,7 @@
 #include <utils/Utils.h>
 
 namespace na62 {
-namespace dim {
+namespace merger {
 
 //uint EobCollector::currentBurstID_ = 0;
 
@@ -30,7 +30,7 @@ EobCollector::EobCollector() {
 }
 
 EobCollector::~EobCollector() {
-// TODO Auto-generated destructor stub
+	// TODO Auto-generated destructor stub
 }
 
 EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
@@ -38,14 +38,13 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 	uint dataLength = dimInfo->getSize();
 
 	if (dataLength < sizeof(EobDataHdr)) {
-		LOG_ERROR("EOB Service "<<dimInfo->getName()<<" does not contain enough data: Found only " <<
-		dataLength << " B but at least " << sizeof(EobDataHdr) <<
-		" B are needed to store the header ");
+		LOG_ERROR("EOB Service " << dimInfo->getName() << " does not contain enough data: Found only "
+				<< dataLength << " B but at least " << sizeof(EobDataHdr) << " B are needed to store the header ");
 	} else {
 		EobDataHdr* hdr = (EobDataHdr*) data;
-		if (hdr->length*4 != dataLength) {
-			LOG_ERROR("EOB Service "<<dimInfo->getName()<<" does not contain the right number of bytes: The header says " <<
-			hdr->length*4 << " but DIM stores " << dataLength);
+		if (hdr->length * 4 != dataLength) {
+			LOG_ERROR("EOB Service " << dimInfo->getName() <<" does not contain the right number of bytes: The header says "
+					<< hdr->length*4 << " but DIM stores " << dataLength);
 		} else {
 			char* buff = new char[dataLength];
 			memcpy(buff, data, dataLength);
@@ -56,73 +55,72 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 }
 
 void EobCollector::run() {
-	dimListener_.registerBurstTimeInfoListener([this](dim::BurstTimeInfo bti) {
-		LOG_INFO("Burst info update for burst " << bti.burstID);
-		/*
-		 * This is executed after every eob update
-		 */
-		if(bti.eobTime ==0) {
-			return;
-		}
-		burstInfos_[bti.burstID] = bti;
-		/*
-		 * Start a thread that will sleep a while and read the EOB services afterwards
-		 */
-		boost::thread([this, bti]() {
-					/*
-					 * Update list of DimInfos within one mutex protected scope
-					 */
-					{	std::lock_guard<std::mutex> lock(eobCallbackMutex_);
+	//	dimListener_.registerBurstTimeInfoListener([this](dim::BurstTimeInfo bti) {
+	//		LOG_INFO("Burst info update for burst " << bti.burstID);
+	//		/*
+	//		 * This is executed after every eob update
+	//		 */
+	//		if(bti.eobTime ==0) {
+	//			return;
+	//		}
+	//		burstInfos_[bti.burstID] = bti;
+	//		/*
+	//		 * Start a thread that will sleep a while and read the EOB services afterwards
+	//		 */
+	//		boost::thread([this, bti]() {
+	//			/*
+	//			 * Update list of DimInfos within one mutex protected scope
+	//			 */
 
-						DimBrowser dimBrowser;
-						char *service, *format;
-						dimBrowser.getServices("NA62/EOB/*");
-						while (dimBrowser.getNextService(service, format)) {
-							std::string serviceName(service);
+	while(1) {
+		{
+			std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 
-							if(eobInfoByName_.count(serviceName) == 0) {
-								//LOG_INFO("New service found: " << serviceName << "\t" << format);
-								eobInfoByName_[std::string(serviceName)] = new DimInfo(service, -1);
-							}
-						}
-					}
-
-					/*
-					 * Wait for the services to update the data
-					 */
-					usleep(MyOptions::GetInt(OPTION_EOB_COLLECTION_TIMEOUT)*1000);
-
-					std::lock_guard<std::mutex> lock(eobCallbackMutex_);
-
-					// Delete old data
-			eobDataByBurstIDBySourceID.erase(bti.burstID);
-
-			/*
-			 * Store data of all services
-			 */
-			for(auto serviceNameAndService: eobInfoByName_) {
-				EobDataHdr* hdr = getData(serviceNameAndService.second);
-				if (hdr != nullptr && hdr->eobTimestamp==bti.eobTime) {
-					LOG_INFO("Storing data of service " << serviceNameAndService.second->getName()
-							<< " with " << hdr->length << " words and detector ID " << (int) hdr->detectorID
-							<< " for burst " << bti.burstID);
-					eobDataByBurstIDBySourceID[bti.burstID][hdr->detectorID].push_back(hdr);
-				} else {
-					if( hdr != nullptr) {
-						LOG_ERROR("Found EOB with TS " << hdr->eobTimestamp << " after receiving EOB TS " << bti.eobTime << " for burst " << bti.burstID);
-					}
-					delete[] hdr;
+			DimBrowser dimBrowser;
+			char *service, *format;
+			dimBrowser.getServices("NA62/EOB/*");
+			while (dimBrowser.getNextService(service, format)) {
+				std::string serviceName(service);
+				if(eobInfoByName_.find(serviceName) == eobInfoByName_.end()) {
+					LOG_INFO("New service found: " << serviceName );
+					eobInfoByName_[serviceName] = new EobDimInfo(serviceName);
 				}
 			}
-		});
-
-});
+		}
+		sleep(10);
+	}
+	//		});
+	//
+	//});
 }
 
 zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
+	u_int32_t ts =  0;
 
-	if (eobDataByBurstIDBySourceID.count(event->burstID) == 0) {
+	try {
+		BurstTimeInfo bi = burstInfo_.getInfoEOB(event->burstID);
+		ts = bi.eobTime;
+	}
+	catch(std::exception&e) {
+		LOG_ERROR("DIM burst time data for Burst " << (int) event->burstID << " not found.");
+		return eventMessage;
+	}
+
+	std::map<uint8_t, std::vector<EobDataHdr*>> eobDataBySourceID;
+
+	// Fill all DIM information by detector
+	for (auto eobService: eobInfoByName_) {
+		auto eobInfo = eobService.second->getInfo(ts);
+		if (eobInfo == NULL) {
+			LOG_ERROR("No information found with ts " << (int) ts << " for service " << eobService.first);
+			continue;
+		}
+		eobDataBySourceID[eobInfo->detectorID].push_back(eobInfo);
+		eobService.second->clearInfo(ts);
+	}
+
+	if (eobDataBySourceID.size() == 0) {
 		LOG_ERROR("Trying to write dim-EOB data of burst " << event->burstID << " even though none has been received");
 		return eventMessage;
 	}
@@ -135,12 +133,6 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	// The actual new size will be stored here
 	uint newEventSize = newEventBufferSize;
 
-	auto eobDataBySourceID = eobDataByBurstIDBySourceID[event->burstID];
-
-	if (eobDataBySourceID.size() == 0) {
-		return eventMessage;
-	}
-
 	if (event->getL0TriggerTypeWord() != TRIGGER_L0_EOB) {
 		for (auto sourceIDAndDataVector : eobDataBySourceID) {
 			for (auto data : sourceIDAndDataVector.second) {
@@ -148,7 +140,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 			}
 			eobDataBySourceID.erase(sourceIDAndDataVector.first);
 		}
-		eobDataByBurstIDBySourceID.erase(event->burstID);
+		LOG_ERROR("The event to which we should add EOB data is not a EOB event");
 		return eventMessage;
 	}
 
@@ -187,7 +179,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		if (sourceIdAndOffset.sourceID == SOURCE_ID_NSTD) {
 			for (int followingSource = sourceNum + 1; followingSource != event->numberOfDetectors; followingSource++) {
 				EVENT_DATA_PTR& sourceIdAndOffset = newEventPointerTable[followingSource];
-				sourceIdAndOffset.offset += totalEOBlength/4;
+				sourceIdAndOffset.offset += totalEOBlength / 4;
 			}
 		}
 	}
@@ -206,6 +198,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		EVENT_DATA_PTR sourceIdAndOffset = sourceIdAndOffsets[sourceNum];
 
 		if (eobDataBySourceID.count(sourceIdAndOffset.sourceID) == 0) {
+			LOG_INFO("No extra EOB data for detector 0x" << std::hex << (int) sourceIdAndOffset.sourceID << std::dec);
 			continue;
 		}
 
@@ -213,7 +206,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		 * Copy all EOB data of this sourceID and delete the EOB data afterwards
 		 */
 		for (EobDataHdr* data : eobDataBySourceID[sourceIdAndOffset.sourceID]) {
-			LOG_INFO("Copying EOB-Data from dim for sourceID " << (int) sourceIdAndOffset.sourceID);
+			LOG_INFO("Copying EOB-Data from dim for sourceID 0x"<< std::hex << (int) sourceIdAndOffset.sourceID << std::dec);
 			memcpy(EOBpnt, data, data->length * 4);
 
 			EOBpnt += data->length * 4;
@@ -288,5 +281,6 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	return newEventMessage;
 
 }
+
 }
 }

@@ -70,40 +70,52 @@ void Merger::handle_newBurst(uint32_t newBurstID) {
 
 void Merger::startBurstControlThread(uint32_t& burstID) {
 	size_t lastEventNum = -1;
+
 	do {
 		lastEventNum = eventsByBurstByID[burstID].size();
 		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
 	} while (eventsByBurstByID[burstID].size() > lastEventNum);
-	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size()
-			<< " because of normal timeout.");
+
+	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
 	handle_burstFinished(burstID);
 }
 
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
-
 	std::lock_guard<std::mutex> lock(newBurstMutex);
 	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
+
 	uint32_t sob = 0;
-	try {
-		dim::BurstTimeInfo burstInfo = eobCollector_.getBurstInfo(finishedBurstID);
-		lastSeenRunNumber_ = burstInfo.runNumber;
-		sob = burstInfo.sobTime;
+	uint32_t attemp = 0;
+	while (sob == 0) {
+		try {
+			BurstTimeInfo burstInfo = eobCollector_.getBurstInfoSOB(finishedBurstID);
+			lastSeenRunNumber_ = burstInfo.runNumber;
+			sob = burstInfo.sobTime;
 
-		//Extend the EOB event with extra info from DIM
-		if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
-			zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
-			zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
+			//Extend the EOB event with extra info from DIM
+			if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
+				zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
+				zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
 
-			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+				EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
 
-			eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+				eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+			}
+
+		} catch (std::exception &e) {
+			LOG_ERROR("Unable to fetch DIM information for burst " << finishedBurstID
+					<< " in run " <<  lastSeenRunNumber_<< ". Trying again...");
+			usleep(2);
 		}
 
+		if (++attemp > 5) {
+			LOG_ERROR("Missing DIM information for burst " << finishedBurstID
+					<< " in run " <<  lastSeenRunNumber_<< ". This burst will have missing SOB/EOB information!");
+			break;
+		}
 	}
-	catch (std::exception &e){
-		LOG_ERROR("Missing DIM information for burst " << finishedBurstID
-				<< " in run " <<  lastSeenRunNumber_<< ". This burst will have missing SOB/EOB information!");
-	}
+
+
 
 	saveBurst(burst, lastSeenRunNumber_, finishedBurstID, sob);
 	eventsInLastBurst_ = eventsByBurstByID[finishedBurstID].size();

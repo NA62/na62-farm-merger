@@ -66,8 +66,8 @@ private:
 	void handle_newBurst(uint32_t newBurstID);
 	void handle_burstFinished(uint32_t finishedBurstID);
 
-	dim::EobCollector eobCollector_;
-
+	na62::merger::EobCollector eobCollector_;
+	//Run Burst event
 	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
 	uint eventsInLastBurst_;
 
