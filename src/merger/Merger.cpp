@@ -28,7 +28,7 @@ namespace merger {
 
 Merger::Merger() :
 		eventsInLastBurst_(0), storageDir_(Options::GetString(OPTION_STORAGE_DIR) + "/"), lastSeenRunNumber_(0) {
-	eobCollector_.run();
+		boost::thread(&na62::merger::EobCollector::run, &eobCollector_);
 
 }
 

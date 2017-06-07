@@ -25,8 +25,7 @@ class BurstDimInfo : DimInfo {
 public:
 	BurstDimInfo(): DimInfo("RunControl/BurstTimeStruct",-1) {lastRun_ = 0;}
 	void infoHandler() {
-
-	//put data into time-stamped indexed structure
+		//put data into time-stamped indexed structure
 		uint dataLength = getSize();
 
 		if (dataLength != sizeof(BurstTimeInfo)) {
@@ -35,21 +34,74 @@ public:
 		} else {
 			BurstTimeInfo* hdr = (BurstTimeInfo*) getData();
 
-			if(hdr->runNumber >= lastRun_+2) {
+//			if(hdr->runNumber >= lastRun_+2) {
+//				std::lock_guard<std::mutex> lock(mapMutex_);
+//				sobDataByBurstID_.clear();
+//				eobDataByBurstID_.clear();
+//				lastRun_ = hdr->runNumber;
+//			}
+//			if(hdr->eobTime ==0) {
+//				std::lock_guard<std::mutex> lock(mapMutex_);
+//				sobDataByBurstID_.insert(std::make_pair(hdr->sobTime, *hdr));
+//				return;
+//			} else {
+//				std::lock_guard<std::mutex> lock(mapMutex_);
+//				eobDataByBurstID_.insert(std::make_pair(hdr->eobTime, *hdr));
+//			}
+
+
+			if (hdr->eobTime != 0) {
 				std::lock_guard<std::mutex> lock(mapMutex_);
-				sobDataByBurstID_.clear();
-				eobDataByBurstID_.clear();
-				lastRun_ = hdr->runNumber;
+				if (eobDataByBurstID_.count(hdr->burstID) > 0) {
+					eobDataByBurstID_.erase(hdr->burstID);
+				}
+				eobDataByBurstID_.insert(std::make_pair(hdr->burstID, *hdr));
 			}
-			if(hdr->eobTime ==0) {
-				std::lock_guard<std::mutex> lock(mapMutex_);
-				sobDataByBurstID_.insert(std::make_pair(hdr->sobTime, *hdr));
+
+			if (hdr->sobTime == 0) {
+				LOG_ERROR("Handled a 0 SOB");
 				return;
-			}
-			else {
+			} else {
 				std::lock_guard<std::mutex> lock(mapMutex_);
-				eobDataByBurstID_.insert(std::make_pair(hdr->eobTime, *hdr));
+				if (sobDataByBurstID_.count(hdr->burstID) > 0) {
+					sobDataByBurstID_.erase(hdr->burstID);
+				}
+				sobDataByBurstID_.insert(std::make_pair(hdr->burstID, *hdr));
 			}
+
+
+//			lastSobTs_ = hdr->sobTime;
+//
+//
+//			//Cleaning the map
+//			{
+//				std::lock_guard<std::mutex> lock(mapMutex_);
+//				if (sobDataBySobTs_.size() > 5) {
+//					for(auto & bi : sobDataBySobTs_) {
+//						if (lastSobTs_ - bi.first > 60*60*5) {//Five hours
+//							//LOG_INFO("Index " <<   bi.first << " deleted from the Burst info map");
+//							sobDataBySobTs_.erase(bi.first);
+//						} else {
+//							break;
+//						}
+//					}
+//				}
+//			}
+//
+//			//Cleaning the map
+//			{
+//				std::lock_guard<std::mutex> lock(mapMutex_);
+//				if (eobDataBySobTs_.size() > 5) {
+//					for(auto & bi : eobDataBySobTs_) {
+//						if (lastSobTs_ - bi.first > 60*60*5) {
+//							//LOG_INFO("Index " <<   bi.first << " deleted from the Burst info map");
+//							eobDataBySobTs_.erase(bi.first);
+//						} else {
+//							break;
+//						}
+//					}
+//				}
+//			}
 		}
 	}
 
