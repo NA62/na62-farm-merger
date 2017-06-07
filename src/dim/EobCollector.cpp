@@ -99,10 +99,10 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	u_int32_t ts =  0;
 
 	try {
-		BurstTimeInfo bi = burstInfo_.getInfoEOB(event->burstID);
+		//BurstTimeInfo bi = burstInfo_.getInfoEOB(event->burstID);
+		BurstTimeInfo bi = burstInfo_.getInfoEOB(event->SOBtimestamp);
 		ts = bi.eobTime;
-	}
-	catch(std::exception&e) {
+	} catch(std::exception&e) {
 		LOG_ERROR("DIM burst time data for Burst " << (int) event->burstID << " not found.");
 		return eventMessage;
 	}

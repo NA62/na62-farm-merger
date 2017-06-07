@@ -41,8 +41,15 @@ public:
 
 	std::string getProgressStats() {
 		std::stringstream stream;
-		for (auto pair : eventsByBurstByID) {
-			stream << pair.first << ":" << pair.second.size() << ";";
+		//for (auto pair : eventsByBurstByID) {
+		//for (auto pair : eventsBySobTsByID) {
+		for (auto event = eventsBySobTsByID.rbegin(); event!=eventsBySobTsByID.rend(); ++event ) {
+
+			//eobCollector_.getBurstInfoSOB(pair.first)
+		    //uint32_t burstID = reinterpret_cast<EVENT_HDR*> ( ((zmq::message_t*) event->second.begin()->second)->data())->burstID;
+		    uint32_t burstID = event->first;
+			stream << burstID << ":"<< event->second.size() << ";";
+			//stream << event << ":" << pair.second.size() << ";";
 		}
 		return stream.str();
 	}
@@ -67,9 +74,11 @@ private:
 	void handle_burstFinished(uint32_t finishedBurstID);
 
 	na62::merger::EobCollector eobCollector_;
-	//Run Burst event
-	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
-	uint eventsInLastBurst_;
+	//Burst eventnumber event
+	//std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsByBurstByID;
+	//SOBtimestamp eventnumber event
+	std::map<uint32_t, std::map<uint32_t, zmq::message_t*> > eventsBySobTsByID;
+	std::atomic<uint32_t> eventsInLastBurst_;
 
 	std::map<uint32_t, dim::BurstTimeInfo> burstInfos;
 	//std::map<uint32_t, uint32_t> runNumberByBurst;
@@ -80,7 +89,6 @@ private:
 	std::mutex eventMutex;
 
 	const std::string storageDir_;
-	uint32_t lastSeenRunNumber_;
 
 };
 

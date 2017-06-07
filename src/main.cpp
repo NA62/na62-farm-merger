@@ -34,7 +34,24 @@ int main(int argc, char* argv[]) {
 	LOG_INFO("Initializing Options");
 	MyOptions::Load(argc, argv);
 
+	//My test
+
+//	LOG_INFO("Starting");
+//	std::cout<<"Starting "<<std::endl;
+//	BurstDimInfo burstInfo_;
+//	LOG_INFO("Wathching");
+//	while (1) {
+//		LOG_INFO("Looping");
+//		//burstInfo_.getInfoSOB(burstID);
+//		for(auto bi : burstInfo_.getAllInfoEOB()) {
+//			LOG_INFO("Sob ts: " << bi.first << " EOBtime: " << bi.second.eobTime);
+//		}
+//		sleep(2);
+//	}
+//	//End my test
+
 	na62::ZMQHandler::Initialize(1);
+
 
 	Merger merger;
 	MonitorConnector monitor(merger);

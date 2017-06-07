@@ -39,16 +39,17 @@ public:
 	 */
 	zmq::message_t* addEobDataToEvent(zmq::message_t* event);
 
-	BurstTimeInfo getBurstInfoSOB(uint32_t burstID) {
-		return burstInfo_.getInfoSOB(burstID);
+	BurstTimeInfo getBurstInfoSOB(uint32_t sobTs) {
+		return burstInfo_.getInfoSOB(sobTs);
 	}
 
-	BurstTimeInfo getBurstInfoEOB(uint32_t burstID) {
-		return burstInfo_.getInfoEOB(burstID);
+	BurstTimeInfo getBurstInfoEOB(uint32_t sobTs) {
+		return burstInfo_.getInfoEOB(sobTs);
 	}
-	//static void setCurrentBurstID(uint burstID) {
-	//	currentBurstID_ = burstID;
-	//}
+	BurstTimeInfo getBurstInfoByBurst(uint32_t burstID) {
+		return burstInfo_.getInfoByBurst(burstID);
+	}
+
 
 private:
 	//DimListener dimListener_;
