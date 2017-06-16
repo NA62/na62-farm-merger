@@ -83,39 +83,28 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 	std::lock_guard<std::mutex> lock(newBurstMutex);
 	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID[finishedBurstID];
-
 	uint32_t sob = 0;
-	uint32_t attemp = 0;
-	while (sob == 0) {
-		try {
-			BurstTimeInfo burstInfo = eobCollector_.getBurstInfoSOB(finishedBurstID);
-			lastSeenRunNumber_ = burstInfo.runNumber;
-			sob = burstInfo.sobTime;
 
-			//Extend the EOB event with extra info from DIM
-			if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
-				zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
-				zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
+	try {
+		BurstTimeInfo burstInfo = eobCollector_.getBurstInfoSOB(finishedBurstID);
+		lastSeenRunNumber_ = burstInfo.runNumber;
+		sob = burstInfo.sobTime;
 
-				EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+		//Extend the EOB event with extra info from DIM
+		if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
+			zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
+			zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
 
-				eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
-			}
+			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
 
-		} catch (std::exception &e) {
-			LOG_ERROR("Unable to fetch DIM information for burst " << finishedBurstID
-					<< " in run " <<  lastSeenRunNumber_<< ". Trying again...");
-			usleep(2);
+			eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
 		}
 
-		if (++attemp > 5) {
-			LOG_ERROR("Missing DIM information for burst " << finishedBurstID
+	} catch (std::exception &e) {
+		LOG_ERROR("Missing DIM information for burst " << finishedBurstID
 					<< " in run " <<  lastSeenRunNumber_<< ". This burst will have missing SOB/EOB information!");
-			break;
-		}
+		usleep(2);
 	}
-
-
 
 	saveBurst(burst, lastSeenRunNumber_, finishedBurstID, sob);
 	eventsInLastBurst_ = eventsByBurstByID[finishedBurstID].size();
@@ -159,8 +148,14 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 
 		delete pair.second;
 	}
-
-	writer.writeBkmFile(Options::GetString(OPTION_BKM_DIR));
+	try {
+		if (!writer.doChown(filePath, "na62cdr", "root")) {
+			LOG_ERROR("Chown failed on file: " << fileName);
+		}
+	} catch (const std::exception & e) {
+		LOG_ERROR("Chown Failed " << e.what());
+	}
+	//writer.writeBkmFile(Options::GetString(OPTION_BKM_DIR));
 }
 
 std::string Merger::generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
