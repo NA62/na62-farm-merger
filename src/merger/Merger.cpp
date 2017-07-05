@@ -64,7 +64,7 @@ void Merger::addPacket(zmq::message_t* eventMessage) {
 }
 
 void Merger::handle_newBurst(uint32_t newBurstID) {
-	LOG_INFO("New burst: " << newBurstID);
+	LOG_ERROR("New burst: " << newBurstID);
 	boost::thread(boost::bind(&Merger::startBurstControlThread, this, newBurstID));
 }
 
@@ -76,7 +76,7 @@ void Merger::startBurstControlThread(uint32_t& burstID) {
 		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
 	} while (eventsByBurstByID[burstID].size() > lastEventNum);
 
-	LOG_INFO("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
+	LOG_ERROR("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
 	handle_burstFinished(burstID);
 }
 
@@ -93,11 +93,17 @@ void Merger::handle_burstFinished(uint32_t finishedBurstID) {
 		//Extend the EOB event with extra info from DIM
 		if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
 			zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
-			zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
+			//Check if this guy is a real EOB
 
-			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(eobEventMessage->data());
+			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(oldEobEventMessage->data());
 
-			eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+			//Check if it is a real EOB
+			if (eobEvent->getL0TriggerTypeWord() == TRIGGER_L0_EOB) {
+				zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
+				eventsByBurstByID[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
+			} else {
+				LOG_ERROR("The last event of the bust " << finishedBurstID << " is not an EOB cannot add EOB information");
+			}
 		}
 
 	} catch (std::exception &e) {
@@ -131,7 +137,7 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 		while (boost::filesystem::exists(storageDir_ + fileName)) {
 			LOG_ERROR("File already exists: " << fileName);
 			fileName = generateFileName(sobTime, runNumber, burstID, ++counter);
-			LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
+			LOG_ERROR(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
 		}
 
 		LOG_ERROR("Instead writing file: " << fileName);
@@ -139,7 +145,7 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 	}
 
 	BurstFileWriter writer(filePath, fileName, eventByID.size(), sobTime, runNumber, burstID);
-
+	LOG_ERROR("Starting write: " << fileName);
 	for (auto pair : eventByID) {
 		EVENT_HDR* ev = reinterpret_cast<EVENT_HDR*>(pair.second->data());
 		// Set SOB time in the event
@@ -148,9 +154,13 @@ void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t&
 
 		delete pair.second;
 	}
+	LOG_ERROR("End write: " << fileName);
+
 	try {
 		if (!writer.doChown(filePath, "na62cdr", "root")) {
 			LOG_ERROR("Chown failed on file: " << fileName);
+		} else {
+			LOG_ERROR("Correctly changed permissions of: " << fileName);
 		}
 	} catch (const std::exception & e) {
 		LOG_ERROR("Chown Failed " << e.what());

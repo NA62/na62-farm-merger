@@ -50,7 +50,7 @@ void MonitorConnector::handleUpdate() {
 
 	IPCHandler::updateState(currentState);
 
-	sendStatistics("BurstProgress", merger_.getProgressStats());
+	sendStatistics("BurstProgress", merger_.getProgressStats()); //Segfault here
 	sendStatistics("EventsInLastBurst", std::to_string(merger_.getNumberOfEventsInLastBurst()));
 
 }

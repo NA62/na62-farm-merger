@@ -36,7 +36,7 @@ public:
 				LOG_ERROR("EOB Service " << getName() <<" does not contain the right number of bytes: The header says "
 						<< hdr->length*4 << " but DIM stores " << dataLength);
 			} else {
-				char* buff = new char[dataLength];
+				char* buff = new char[dataLength]; //Seg fault here Bad alloc
 				memcpy(buff, hdr, dataLength);
 				LOG_INFO("Inserted data for " << getName() << " with TS " << (uint) hdr->eobTimestamp );
 				std::lock_guard<std::mutex> lock(mapMutex_);
