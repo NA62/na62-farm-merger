@@ -19,7 +19,6 @@
 #include <socket/ZMQHandler.h>
 #include <monitoring/IPCHandler.h>
 
-//#include "dim/CommandConnector.h"
 #include "dim/MonitorConnector.h"
 #include "merger/Merger.hpp"
 #include "options/MyOptions.h"
@@ -37,10 +36,11 @@ int main(int argc, char* argv[]) {
 	na62::ZMQHandler::Initialize(1);
 
 	Merger merger;
+	merger.startThread("Merger");
+
 	MonitorConnector monitor(merger);
 
-	//CommandConnector commands(merger);
-	//commands.startThread("CommandConnector");
+
 
 	zmq::context_t context(1);
 	zmq::socket_t frontEnd(context, ZMQ_PULL);
@@ -61,14 +61,11 @@ int main(int argc, char* argv[]) {
 		//  Wait for next request from client
 		zmq::message_t* eventMessage = new zmq::message_t();
 		frontEnd.recv(eventMessage);
-		EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
-
-		if (eventMessage->size() == event->length * 4) {
-			merger.addPacket(eventMessage);
-		} else {
-			LOG_ERROR("Received " << eventMessage->size() << " Bytes with an event of length " << (event->length * 4) );
-		}
+		merger.push(eventMessage);
 	}
-
+	/*
+	 * Join PacketHandler and other threads
+	 */
+	AExecutable::JoinAll();
 	return EXIT_SUCCESS;
 }

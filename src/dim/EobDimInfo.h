@@ -38,7 +38,7 @@ public:
 			} else {
 				char* buff = new char[dataLength]; //Seg fault here Bad alloc
 				memcpy(buff, hdr, dataLength);
-				LOG_INFO("Inserted data for " << getName() << " with TS " << (uint) hdr->eobTimestamp );
+				//LOG_INFO("Inserted data for " << getName() << " with TS " << (uint) hdr->eobTimestamp );
 				std::lock_guard<std::mutex> lock(mapMutex_);
 				eobDataByTS_[hdr->eobTimestamp] = (EobDataHdr*) buff;
 			}

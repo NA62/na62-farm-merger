@@ -55,23 +55,7 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 }
 
 void EobCollector::run() {
-	//	dimListener_.registerBurstTimeInfoListener([this](dim::BurstTimeInfo bti) {
-	//		LOG_INFO("Burst info update for burst " << bti.burstID);
-	//		/*
-	//		 * This is executed after every eob update
-	//		 */
-	//		if(bti.eobTime ==0) {
-	//			return;
-	//		}
-	//		burstInfos_[bti.burstID] = bti;
-	//		/*
-	//		 * Start a thread that will sleep a while and read the EOB services afterwards
-	//		 */
-	//		boost::thread([this, bti]() {
-	//			/*
-	//			 * Update list of DimInfos within one mutex protected scope
-	//			 */
-
+	LOG_INFO("Starting EOBCollector Thread");
 	while(1) {
 		{
 			std::lock_guard<std::mutex> lock(eobCallbackMutex_);
@@ -89,22 +73,20 @@ void EobCollector::run() {
 		}
 		sleep(10);
 	}
-	//		});
-	//
-	//});
 }
 
-zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
+//zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
+char* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
+	std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 	EVENT_HDR* event = reinterpret_cast<EVENT_HDR*>(eventMessage->data());
 	u_int32_t ts =  0;
 
 	try {
 		BurstTimeInfo bi = burstInfo_.getInfoEOB(event->burstID);
 		ts = bi.eobTime;
-	}
-	catch(std::exception&e) {
+	} catch(std::exception&e) {
 		LOG_ERROR("DIM burst time data for Burst " << (int) event->burstID << " not found.");
-		return eventMessage;
+		return  (char*) eventMessage->data();
 	}
 
 	std::map<uint8_t, std::vector<EobDataHdr*>> eobDataBySourceID;
@@ -122,7 +104,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 
 	if (eobDataBySourceID.size() == 0) {
 		LOG_ERROR("Trying to write dim-EOB data of burst " << event->burstID << " even though none has been received");
-		return eventMessage;
+		return (char*) eventMessage->data();
 	}
 
 	/*
@@ -141,7 +123,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 			eobDataBySourceID.erase(sourceIDAndDataVector.first);
 		}
 		LOG_ERROR("The event to which we should add EOB data is not a EOB event");
-		return eventMessage;
+		return (char*) eventMessage->data();
 	}
 
 	EVENT_DATA_PTR* sourceIdAndOffsets = event->getDataPointer();
@@ -188,7 +170,7 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	 * Check if any dim-EOB data was found
 	 */
 	if (newEventBufferSize == event->length * 4) {
-		return eventMessage;
+		return (char*) eventMessage->data();
 	}
 
 	char * allEOBpacket = new char[totalEOBlength];
@@ -216,9 +198,16 @@ zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 		eobDataBySourceID.erase(sourceIdAndOffset.sourceID);
 	}
 
-	zmq::message_t* newEventMessage = new zmq::message_t(newEventBufferSize);
-	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage->data();
-	char* eventBuffer = reinterpret_cast<char*>(newEventMessage->data());
+//	zmq::message_t* newEventMessage = new zmq::message_t(newEventBufferSize);
+//	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage->data();
+//	char* eventBuffer = reinterpret_cast<char*>(newEventMessage->data());
+
+	char* newEventMessage = new char[newEventBufferSize];
+	struct EVENT_HDR* header = (struct EVENT_HDR*) newEventMessage;
+	char* eventBuffer = reinterpret_cast<char*>(newEventMessage);
+
+
+
 
 	uint oldEventPtr = 0;
 	uint newEventPtr = 0;

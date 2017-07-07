@@ -37,8 +37,8 @@ public:
 	 * Writes the EOB data from dim to the end of every detector block in the event.
 	 * event will be deleted in this method if any EOB data was found. You should therefore exchange event with the returned pointer.
 	 */
-	zmq::message_t* addEobDataToEvent(zmq::message_t* event);
-
+	//zmq::message_t* addEobDataToEvent(zmq::message_t* event);
+	char* addEobDataToEvent(zmq::message_t* event);
 	BurstTimeInfo getBurstInfoSOB(uint32_t burstID) {
 		return burstInfo_.getInfoSOB(burstID);
 	}
@@ -46,12 +46,8 @@ public:
 	BurstTimeInfo getBurstInfoEOB(uint32_t burstID) {
 		return burstInfo_.getInfoEOB(burstID);
 	}
-	//static void setCurrentBurstID(uint burstID) {
-	//	currentBurstID_ = burstID;
-	//}
 
 private:
-	//DimListener dimListener_;
 
 	/**
 	 * Returns the data stored at the service identified by the given serviceName.
@@ -64,14 +60,6 @@ private:
 
 	std::map <std::string, EobDimInfo*> eobInfoByName_;
 	BurstDimInfo burstInfo_;
-
-//	std::map<uint32_t, BurstTimeInfo> burstInfos_;
-
-	/*
-	 * Stores the current Burst ID which we'll get from incoming events instead of dim
-	 * as the dim burstID does not change while the run control isn't runnings
-	 */
-	//static uint currentBurstID_;
 };
 
 }
