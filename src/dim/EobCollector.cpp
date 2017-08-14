@@ -56,7 +56,8 @@ EobDataHdr* EobCollector::getData(DimInfo* dimInfo) {
 
 void EobCollector::run() {
 	LOG_INFO("Starting EOBCollector Thread");
-	while(1) {
+	is_running_ = true;
+	while(is_running_) {
 		{
 			std::lock_guard<std::mutex> lock(eobCallbackMutex_);
 
@@ -65,14 +66,27 @@ void EobCollector::run() {
 			dimBrowser.getServices("NA62/EOB/*");
 			while (dimBrowser.getNextService(service, format)) {
 				std::string serviceName(service);
-				if(eobInfoByName_.find(serviceName) == eobInfoByName_.end()) {
-					LOG_INFO("New service found: " << serviceName );
-					eobInfoByName_[serviceName] = new EobDimInfo(serviceName);
+				if (serviceName.find("NA62/EOB/") != std::string::npos) {
+					if(eobInfoByName_.find(serviceName) == eobInfoByName_.end()) {
+						LOG_INFO("New service found: " << serviceName );
+						eobInfoByName_[serviceName] = new EobDimInfo(serviceName);
+					}
+				} else {
+					LOG_ERROR("Dim browser match a wrong service: " << serviceName );
 				}
 			}
 		}
-		sleep(10);
+		for (uint cycle = 0; cycle < 10; cycle++) {
+			if (is_running_) {
+				sleep(1);
+			}
+		}
 	}
+	LOG_INFO("Exiting from EOBCollector");
+}
+void EobCollector::stop() {
+	LOG_INFO("Stopping EOBCollector");
+	is_running_ = false;
 }
 
 //zmq::message_t* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {

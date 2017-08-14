@@ -19,6 +19,7 @@
 
 #include <monitoring/IPCHandler.h>
 #include <utils/Stopwatch.h>
+#include <utils/AExecutable.h>
 
 #include "../merger/Merger.hpp"
 
@@ -26,17 +27,20 @@
 namespace na62 {
 namespace merger {
 
-class MonitorConnector {
+class MonitorConnector: public AExecutable  {
 public:
 	MonitorConnector(Merger& merger);
 	virtual ~MonitorConnector();
 
 	void updateState(na62::STATE newState);
+	void shutDown();
 
 private:
 	virtual void thread();
 	void handleUpdate();
+	void onInterruption();
 	void sendStatistics(std::string name, std::string values);
+
 
 	Merger& merger_;
 

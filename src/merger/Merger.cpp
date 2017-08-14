@@ -9,20 +9,16 @@
 
 #include <fstream>
 #include <iostream>
-#include <boost/thread/thread.hpp>
-#include <boost/filesystem.hpp>
 #include <structs/Event.h>
+#include <thread>
 
 #include <iomanip>
 #include <glog/logging.h>
 #include <boost/date_time.hpp>
 
 #include <utils/Utils.h>
-
 #include <storage/BurstFileWriter.h>
-
 #include "../options/MyOptions.h"
-
 
 namespace na62 {
 namespace merger {
@@ -35,23 +31,24 @@ Merger::Merger() :
 		    mutexbyBurstID_.emplace(key, new std::mutex);
 		}
 
-		boost::thread(&na62::merger::EobCollector::run, &eobCollector_);
+		//Starting EOB Collector thread
+		EobThread_ = std::thread{&na62::merger::EobCollector::run, &eobCollector_};
+
 		burstWritePool_.attachData(this);
 		burstWritePool_.start(4);
 }
 
 Merger::~Merger() {
-
 }
 
 void Merger::push(zmq::message_t* event) {
 	events_queue_.push(event);
 }
 
-
 void Merger::thread() {
 	LOG_INFO("Starting Merger Thread");
-	while (true) {
+	is_running_ = true;
+	while (is_running_) {
 		zmq::message_t * eventMessage = nullptr;
 		events_queue_.try_pop(eventMessage);
 		if (eventMessage == nullptr) {
@@ -88,123 +85,29 @@ void Merger::thread() {
 				burstMap.insert(lb, std::map<uint32_t, zmq::message_t*>::value_type(+event->eventNum, eventMessage));
 			}
 		}
-
-
 	}
 }
 
-//
-//void Merger::startBurstControlThread(uint32_t& burstID) {
-//	size_t lastEventNum = -1;
-//
-//	do {
-//		lastEventNum = eventsByBurstByID_[burstID].size();
-//		sleep(MyOptions::GetInt(OPTION_TIMEOUT));
-//	} while (eventsByBurstByID[burstID].size() > lastEventNum);
-//
-//	LOG_ERROR("Finishing burst " << burstID << " : " << eventsByBurstByID[burstID].size() << " because of normal timeout.");
-//	handle_burstFinished(burstID);
-//}
+void Merger::stopPool() {
+	burstWritePool_.stop();
+	eobCollector_.stop();
+	is_running_ = false;
+}
 
-//void Merger::handle_burstFinished(uint32_t finishedBurstID) {
-//	//std::lock_guard<std::mutex> lock(newBurstMutex);
-//	std::map<uint32_t, zmq::message_t*> &burst = eventsByBurstByID_[finishedBurstID];
-//	uint32_t sob = 0;
-//
-//	try {
-//		BurstTimeInfo burstInfo = eobCollector_.getBurstInfoSOB(finishedBurstID);
-//		lastSeenRunNumber_ = burstInfo.runNumber;
-//		sob = burstInfo.sobTime;
-//
-//		//Extend the EOB event with extra info from DIM
-//		if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
-//			zmq::message_t* oldEobEventMessage = (--burst.end())->second; // Take the last event as EOB event
-//			//Check if this guy is a real EOB
-//
-//			EVENT_HDR* eobEvent = reinterpret_cast<EVENT_HDR*>(oldEobEventMessage->data());
-//
-//			//Check if it is a real EOB
-//			if (eobEvent->getL0TriggerTypeWord() == TRIGGER_L0_EOB) {
-//				zmq::message_t* eobEventMessage = eobCollector_.addEobDataToEvent(oldEobEventMessage);
-//				eventsByBurstByID_[finishedBurstID][eobEvent->eventNum] = eobEventMessage;
-//			} else {
-//				LOG_ERROR("The last event of the bust " << finishedBurstID << " is not an EOB cannot add EOB information");
-//			}
-//		}
-//
-//	} catch (std::exception &e) {
-//		LOG_ERROR("Missing DIM information for burst " << finishedBurstID
-//					<< " in run " <<  lastSeenRunNumber_<< ". This burst will have missing SOB/EOB information!");
-//		usleep(2);
-//	}
-//
-//	saveBurst(burst, lastSeenRunNumber_, finishedBurstID, sob);
-//	eventsInLastBurst_ = eventsByBurstByID_[finishedBurstID].size();
-//	eventsByBurstByID_.erase(finishedBurstID);
-//}
-//
-//void Merger::saveBurst(std::map<uint32_t, zmq::message_t*>& eventByID, uint32_t& runNumber, uint32_t& burstID, uint32_t& sobTime) {
-//	std::string fileName = generateFileName(sobTime, runNumber, burstID, 0);
-//	std::string filePath = storageDir_ + fileName;
-//	LOG_INFO("Writing file " << filePath);
-//
-//	int numberOfEvents = eventByID.size();
-//	if (numberOfEvents == 0) {
-//		LOG_ERROR("No event received for burst " << burstID);
-//		return;
-//	}
-//
-//	if (boost::filesystem::exists(filePath)) {
-//		LOG_ERROR("File already exists: " << filePath);
-//		int counter = 2;
-//		fileName = generateFileName(sobTime, runNumber, burstID, counter);
-//
-//		LOG_INFO(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
-//		while (boost::filesystem::exists(storageDir_ + fileName)) {
-//			LOG_ERROR("File already exists: " << fileName);
-//			fileName = generateFileName(sobTime, runNumber, burstID, ++counter);
-//			LOG_ERROR(runNumber << "\t" << burstID << "\t" << counter << "\t" << fileName << "!!!");
-//		}
-//
-//		LOG_ERROR("Instead writing file: " << fileName);
-//		filePath = storageDir_ + fileName;
-//	}
-//
-//	BurstFileWriter writer(filePath, fileName, eventByID.size(), sobTime, runNumber, burstID);
-//	LOG_ERROR("Starting write: " << fileName);
-//	for (auto pair : eventByID) {
-//		EVENT_HDR* ev = reinterpret_cast<EVENT_HDR*>(pair.second->data());
-//		// Set SOB time in the event
-//		ev->SOBtimestamp = sobTime;
-//		writer.writeEvent(ev);
-//
-//		delete pair.second;
-//	}
-//	LOG_ERROR("End write: " << fileName);
-//
-//	try {
-//		if (!writer.doChown(filePath, "na62cdr", "root")) {
-//			LOG_ERROR("Chown failed on file: " << fileName);
-//		} else {
-//			LOG_ERROR("Correctly changed permissions of: " << fileName);
-//		}
-//	} catch (const std::exception & e) {
-//		LOG_ERROR("Chown Failed " << e.what());
-//	}
-//}
-//
-//std::string Merger::generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate) {
-//	std::stringstream fileName;
-//	fileName << "na62raw_" << sob << "-" << std::setfill('0') << std::setw(2) << Options::GetInt(OPTION_MERGER_ID);
-//	fileName << "-" << std::setfill('0') << std::setw(6) << runNumber << "-";
-//	fileName << std::setfill('0') << std::setw(4) << burstID;
-//
-//	if (duplicate != 0) {
-//		fileName << "_" << duplicate;
-//	}
-//	fileName << ".dat";
-//	return fileName.str();
-//}
+void Merger::onInterruption() {
+	shutdown();
+}
+
+void Merger::shutdown() {
+	LOG_INFO("Stopping merger queue pull");
+	is_running_ = false;
+	LOG_INFO("Stopping burstWritePool");
+	burstWritePool_.stop();
+	LOG_INFO("Stopping EobCollector");
+	eobCollector_.stop();
+	LOG_INFO("Joining EobCollector Thread");
+	EobThread_.join();
+}
 
 } /* namespace merger */
 } /* namespace na62 */

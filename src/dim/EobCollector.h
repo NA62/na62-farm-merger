@@ -32,6 +32,7 @@ public:
 	virtual ~EobCollector();
 
 	void run();
+	void stop();
 
 	/**
 	 * Writes the EOB data from dim to the end of every detector block in the event.
@@ -60,6 +61,7 @@ private:
 
 	std::map <std::string, EobDimInfo*> eobInfoByName_;
 	BurstDimInfo burstInfo_;
+	std::atomic<bool> is_running_;
 };
 
 }
