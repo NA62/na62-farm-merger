@@ -1,5 +1,5 @@
 Debug/
 Release/
 /ICC/
-.settings/language.settings.xml
+.settings/*
 /Debug_ERS/
