@@ -159,6 +159,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.1293778807" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.libs.1838141487" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" useByScannerDiscovery="false" valueType="libs">
 									<listOptionValue builtIn="false" value="na62-farm-lib"/>
+									<listOptionValue builtIn="false" value="tcmalloc"/>
 									<listOptionValue builtIn="false" value="na62-farm-lib-networking"/>
 									<listOptionValue builtIn="false" value="ers"/>
 									<listOptionValue builtIn="false" value="boost_regex"/>
