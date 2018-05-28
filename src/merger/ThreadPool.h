@@ -40,7 +40,7 @@ public:
 
 
 	std::string getProgressStats() {
-		std::unique_lock<std::mutex> lock(status_access_);
+		//std::unique_lock<std::mutex> lock(status_access_);
 		std::stringstream stream;
 		for (auto pair : pool_burst_progress_) {
 			if (pair.first == 0) {
@@ -48,7 +48,7 @@ public:
 			}
 			stream << pair.first << ":" << pair.second << ";";
 		}
-		lock.unlock();
+		//lock.unlock();
 		return stream.str();
 	}
 
@@ -67,15 +67,12 @@ private:
     void drowsiness(uint id);
     void doTask(uint thread_id, uint mytask);
 
-
     std::vector<std::pair<uint,uint>> pool_burst_progress_;
     uint event_in_last_burst_; //Last burst written by the pool hopefully the most recent one
-    std::mutex status_access_;
-
+    //std::mutex status_access_;
 
     Merger* merger_data_;
     void handleBurstFinished(uint thread_id, uint32_t finishedBurstID);
-
 
     void saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID, uint32_t sobTime);
     std::string generateFileName(uint32_t sob, uint32_t runNumber, uint32_t burstID, uint32_t duplicate);

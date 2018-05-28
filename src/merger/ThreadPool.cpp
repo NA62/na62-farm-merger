@@ -18,11 +18,11 @@ void ThreadPool::start(uint pool_size) {
         threads_.push_back(std::thread(&ThreadPool::drowsiness, this, id));
     }
 
-    std::unique_lock<std::mutex> lock(status_access_);
+    //std::unique_lock<std::mutex> lock(status_access_);
     for (uint id = 0; id < pool_size_; ++id) {
     	pool_burst_progress_.push_back({0, 0});
     }
-    lock.unlock();
+    //lock.unlock();
 }
 
 void ThreadPool::pushTask(uint task) {
@@ -73,7 +73,8 @@ void ThreadPool::doTask(uint thread_id, uint my_task) {
 			} else if (currentEventNum == lastEventNum) {
 				break;
 			} else {
-				LOG_ERROR("Burst: " << my_task << " No packets received! " << currentEventNum << " " << lastEventNum);
+				LOG_ERROR("Burst: " << my_task << " Inconsistency between number of received events and events stored on the map! currentEventNumber: " << currentEventNum << " lastEventNum: " << lastEventNum);
+				break;
 			}
         }
 
@@ -154,10 +155,10 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 			//Updating statistics
 			amount++;
 			if ((amount % 50) == 0) {
-				std::unique_lock<std::mutex> lock(status_access_);
+				//std::unique_lock<std::mutex> lock(status_access_);
 				pool_burst_progress_[thread_id].first = burstID;
 				pool_burst_progress_[thread_id].second = amount;
-				lock.unlock();
+				//lock.unlock();
 			}
 
 			//Check if it is a real EOB
@@ -199,9 +200,9 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 	}
 	//Updating to the maximum value
 	{
-		std::unique_lock<std::mutex> lock(status_access_);
+		//std::unique_lock<std::mutex> lock(status_access_);
 		pool_burst_progress_[thread_id].second = amount;
-		lock.unlock();
+		//lock.unlock();
 	}
 
 	LOG_INFO("Ended write burst: " << burstID << " in run " <<  runNumber << " filename " << fileName);
@@ -218,11 +219,11 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 
 	sleep(2); //Let fetch the latest statistics
 	{
-		std::unique_lock<std::mutex> lock(status_access_);
+		//std::unique_lock<std::mutex> lock(status_access_);
 		event_in_last_burst_ = pool_burst_progress_[thread_id].second;
 		pool_burst_progress_[thread_id].first = 0;
 		pool_burst_progress_[thread_id].second = 0;
-		lock.unlock();
+		//lock.unlock();
 	}
 }
 

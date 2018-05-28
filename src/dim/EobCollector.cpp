@@ -109,7 +109,7 @@ char* EobCollector::addEobDataToEvent(zmq::message_t* eventMessage) {
 	for (auto eobService: eobInfoByName_) {
 		auto eobInfo = eobService.second->getInfo(ts);
 		if (eobInfo == NULL) {
-			LOG_ERROR("No information found with ts " << (int) ts << " for service " << eobService.first);
+			LOG_WARNING("No information found with ts " << (int) ts << " for service " << eobService.first);
 			continue;
 		}
 		eobDataBySourceID[eobInfo->detectorID].push_back(eobInfo);
