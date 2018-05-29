@@ -152,6 +152,10 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 				continue;
 			}
 
+			if (ev->length * 4 != pair->second->size()) {
+				LOG_ERROR("Event header.. length mismatch: " << ev->length * 4 << " Zmq packet: " << pair->second->size());
+			}
+
 			//Updating statistics
 			amount++;
 			if ((amount % 50) == 0) {
@@ -164,7 +168,7 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 			//Check if it is a real EOB
 			if (ev->getL0TriggerTypeWord() == TRIGGER_L0_EOB) {
 				if (!last_iteration) {
-					LOG_ERROR("The EOB event " << burstID << " in run " <<  runNumber << " is not the last event of the burst");
+					LOG_ERROR("The EOB event in burst " << burstID << " in run " <<  runNumber << " is not the last event of the burst");
 				}
 				//Extend the EOB event with extra info from DIM
 				if (Options::GetInt(OPTION_APPEND_DIM_EOB)) {
@@ -177,7 +181,7 @@ void ThreadPool::saveBurst(uint thread_id, uint32_t runNumber, uint32_t burstID,
 						writer.writeEvent(ev);
 						delete ev;
 						continue; //To avoid the execution of the section below
-						//I could use alse break since is the last event of bust
+						//I could use also break since is the last event of bust
 					} catch (std::exception &e) {
 						LOG_ERROR("Missing DIM information for burst " << burstID
 									<< " in run " <<  runNumber<< ". This burst will have missing SOB/EOB information!");
