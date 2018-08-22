@@ -24,7 +24,7 @@ namespace na62 {
 namespace merger {
 
 Merger::Merger() :
-		eventsInLastBurst_(0), storageDir_(Options::GetString(OPTION_STORAGE_DIR) + "/"), lastSeenRunNumber_(0) {
+		eventsInLastBurst_(0), storageDirs_({Options::GetString(OPTION_STORAGE_DIR) + "/", Options::GetString(OPTION_STORAGE_DIR_2) + "/"}), lastSeenRunNumber_(0), threshold_(Options::GetInt(OPTION_DISk_THRESHOLD)) {
 
 	    //Creating my mutex pool...
 		for (uint32_t key = 1; key <= 5000; ++key) {

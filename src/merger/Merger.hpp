@@ -26,6 +26,8 @@
 #include "../merger/ThreadPool.h"
 #include <thread>
 
+#include <sys/statvfs.h>
+
 namespace na62 {
 namespace merger {
 
@@ -59,8 +61,45 @@ public:
 		return  eobCollector_;
 	}
 
+	double getDiskOccupancy(const std::string & path) const {
+	    struct statvfs buffer;
+		int ret = statvfs(path.c_str(), &buffer);
+		if (!ret) {
+			const double total = (double) (buffer.f_blocks);
+			const double available = (double) (buffer.f_bfree);
+			const double used = total - available;
+			const double usedPercentage = (double)(used / total);
+			return usedPercentage * 100;
+		}
+		throw std::exception();
+
+	}
+
 	std::string getStorageDir() const {
-		return storageDir_;
+	    try {
+	    	//Will attempt to write on the secondary if the threshold is exceeded
+	    	double disk_occupancy = getDiskOccupancy(storageDirs_[0]);
+	    	if (disk_occupancy < threshold_) { //threshold_ = 80
+	    		LOG_INFO("Using primary storage dir" << storageDirs_[0]<< " Occupancy: " << disk_occupancy << " < " << threshold_);
+	    		return storageDirs_[0];
+	    	}
+	    } catch(std::exception e) {
+	        LOG_ERROR("Primary storage dir: " << storageDirs_[0] << " doesn't exists");
+	    }
+
+	    try {
+	    	//Will throw if doesn't exist the second path to write
+	    	// In this case the primary path is returned
+	    	double disk_occupancy = getDiskOccupancy(storageDirs_[1]);
+			LOG_INFO("Using secondary storage dir: " << storageDirs_[1] << " Occupancy: " << disk_occupancy);
+			return storageDirs_[1];
+
+		} catch(std::exception e) {
+			//LOG_ERROR("Primary storage dir: " << storageDirs_[0] << " doesn't exists");
+		}
+		LOG_INFO("Using primary storage dir: " << storageDirs_[1]);
+		return storageDirs_[0];
+
 	}
 	void stopPool();
 	void shutdown();
@@ -85,8 +124,9 @@ private:
 	tbb::concurrent_queue<zmq::message_t*> events_queue_;
 	ThreadPool burstWritePool_;
 	std::thread EobThread_;
+	uint const threshold_;
 
-	const std::string storageDir_;
+	const std::array<std::string, 2> storageDirs_;
 	uint32_t lastSeenRunNumber_;
 };
 
